@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      A.ISyn
       A.Syn
   other-modules:
       Paths_macserde2
