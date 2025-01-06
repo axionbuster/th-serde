@@ -105,20 +105,10 @@
 module A.Syn where
 
 import A.ISyn
-import Control.Applicative.Combinators
-import Control.Monad
-import Data.Void
 import Language.Haskell.Exts.Extension
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Exts.SrcLoc
 import Language.Haskell.Exts.Syntax
-import Text.Megaparsec (Parsec)
-import Text.Megaparsec qualified as M
-import Text.Megaparsec.Char qualified as M
-import Text.Megaparsec.Char.Lexer qualified as L
-import Text.Megaparsec.Debug (dbg)
-
-type Parser = Parsec Void String
 
 data Syn
   = SynData
@@ -152,3 +142,28 @@ pm1 =
           EnableExtension TypeApplications
         ]
     }
+
+-- | convert intermediate syntax to syntax
+fromisyn :: Derive -> ISyn -> Syn
+fromisyn der0 = do
+  let der = fromderive der0
+  \case
+    ISynData n fs -> SynData (name n) (map fromisynfld fs) der
+    ISynNewtype n (IField f) ->
+      SynNewtype (name n) (Right (fromisynfld f)) der
+    ISynNewtype n (IType v) -> case fromviainfo v of
+      Left _ -> SynNewtype (name n) (Left v) der
+      Right (s, u) ->
+        SynNewtype (name n) (Right (SynFld (name n) s (Just u))) der
+    ISynAlias n d -> SynAlias (name n) (parsetype d)
+  where
+    name n = Ident noSrcSpan n
+    parsetype t = case parseTypeWithMode pm1 t of
+      ParseOk x -> x
+      ParseFailed _ e -> error $ "parsetype: " ++ show e
+    fromderive = fmap name . getderive
+    fromisynfld (ISynFld n t) = case fromviainfo t of
+      Left v -> SynFld (name n) v Nothing
+      Right (s, u) -> SynFld (name n) s (Just u)
+    fromviainfo (Plain t) = Left (parsetype t)
+    fromviainfo (WithVia t s) = Right (parsetype t, parsetype s)

@@ -24,6 +24,7 @@ language: GHC2021
 default-extensions:
 - BlockArguments
 - ViewPatterns
+- LambdaCase
 
 dependencies:
 - base
