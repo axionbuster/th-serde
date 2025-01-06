@@ -106,7 +106,6 @@ module A.Syn where
 
 import Control.Applicative.Combinators
 import Control.Monad
-import Data.Maybe
 import Data.Void
 import Language.Haskell.Exts.Extension
 import Language.Haskell.Exts.Parser
@@ -295,10 +294,6 @@ iparsefield = do
   void $ lexeme (M.string "::")
   isfldtyp <- itype
   pure $ ISynFld {isfldnam, isfldtyp}
-
--- parse an indented block
-block :: Parser a -> Parser [a]
-block p = many do L.indentGuard sc GT M.pos1 *> p
 
 indentblock :: Parser a -> Parser b -> Parser (a, [b])
 indentblock p1 p2 = L.indentBlock sc do
