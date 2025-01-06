@@ -12,6 +12,7 @@ module A.ISyn
     CoercePair (..),
     CoerceHeader (..),
     Derive (..),
+    Parser,
   )
 where
 
@@ -22,48 +23,62 @@ import Text.Megaparsec qualified as M
 import Text.Megaparsec.Char qualified as M
 import Text.Megaparsec.Char.Lexer qualified as L
 
+-- | parser type for the intermediate syntax
 type Parser = Parsec Void String
 
--- Intermediate syntax types
+-- intermediate syntax types
+
+-- | intermediate representation of type definitions
+-- parsed from the input syntax. can be a data type,
+-- newtype, or type alias.
 data ISyn
   = ISynData {isnam :: String, isflds :: [ISynFld]}
   | ISynNewtype {isnam :: String, isfld1 :: INewtypePayload}
   | ISynAlias {isnam :: String, isdest :: String}
   deriving (Show)
 
+-- | payload for newtype definitions, which can either be
+-- a field with a name and type, or just a type
 data INewtypePayload
   = IField ISynFld
   | IType ViaInfo
   deriving (Show)
 
+-- | field definition for data types and newtypes,
+-- containing a field name and its type information
 data ISynFld = ISynFld
   { isfldnam :: String,
     isfldtyp :: ViaInfo
   }
   deriving (Show)
 
+-- | represents a coercion definition from the header,
+-- containing the type class name and function to use
 data CoercePair = CoercePair
   { cpclass :: String,
     cpfun :: String
   }
   deriving (Show)
 
+-- | collection of coercion definitions from the header section
 newtype CoerceHeader = CoerceHeader
   { getcoerceheader :: [CoercePair]
   }
   deriving (Show)
 
+-- | collection of type classes to derive for all defined types
 newtype Derive = Derive
   { getderive :: [String]
   }
   deriving (Show)
 
+-- | type information that may include a 'via' clause
 data ViaInfo
   = Plain String
   | WithVia String String
   deriving (Show)
 
--- Parser utilities
+-- parser utilities
 sc :: Parser ()
 sc = L.space M.space1 (L.skipLineComment "--") (L.skipBlockComment "{-" "-}")
 
@@ -172,7 +187,7 @@ parsesyn = M.choice [parsedata, parsenewtype, parsealias]
 parsetop :: Parser ((CoerceHeader, Derive), [ISyn])
 parsetop = (,) <$> parseheader <*> (M.space *> many (M.try parsesyn))
 
--- Test (when using GHCi)
+-- test (when using GHCi)
 _testbody1 :: String
 _testbody1 =
   unlines
