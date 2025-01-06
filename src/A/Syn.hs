@@ -121,13 +121,27 @@ import Text.Megaparsec.Debug (dbg)
 type Parser = Parsec Void String
 
 data Syn
-  = SynData {synnam :: String, synflds :: [SynFld]}
-  | SynNewtype {synnam :: String, synfld1 :: SynFld}
-  | SynAlias {synnam :: String, syndest :: String}
+  = SynData
+      { synnam :: Name SrcSpanInfo, -- type/con name
+        synflds :: [SynFld], -- fields
+        synders :: [Name SrcSpanInfo] -- deriving classes
+      }
+  | SynNewtype
+      { synnam :: Name SrcSpanInfo,
+        synfld :: Either ViaInfo SynFld,
+        synders :: [Name SrcSpanInfo]
+      }
+  | SynAlias
+      { synnam :: Name SrcSpanInfo,
+        syndest :: Type SrcSpanInfo -- destination type
+      }
   deriving (Show)
 
-data SynFld
-  = SynFld {synfldnam :: String, synfldtyp :: String, synfldvia :: String}
+data SynFld = SynFld
+  { synfnam :: Name SrcSpanInfo, -- field name
+    synftyp :: Type SrcSpanInfo, -- target type
+    synfvia :: Maybe (Type SrcSpanInfo) -- via type if any
+  }
   deriving (Show)
 
 pm1 =
@@ -165,11 +179,61 @@ newtype CoerceHeader = CoerceHeader {getcoerceheader :: [CoercePair]}
 data Derive' = Derive' {getderive' :: [String]}
   deriving (Show)
 
+data ViaInfo
+  = Plain String
+  | WithVia String String
+  deriving (Show)
+
 sc :: Parser ()
 sc = L.space
   do M.space1
   do L.skipLineComment "--"
   do L.skipBlockComment "{-" "-}"
+
+mknam :: String -> Name SrcSpanInfo
+mknam = Ident noSrcSpan
+
+mktyp :: String -> Type SrcSpanInfo
+mktyp s = TyCon noSrcSpan (UnQual noSrcSpan (mknam s))
+
+cvtfld :: ISynFld -> SynFld
+cvtfld ISynFld {isfldnam, isfldtyp} =
+  case isfldtyp of
+    Plain t ->
+      SynFld
+        { synfnam = mknam isfldnam,
+          synftyp = mktyp t,
+          synfvia = Nothing
+        }
+    WithVia t v ->
+      SynFld
+        { synfnam = mknam isfldnam,
+          synftyp = mktyp t,
+          synfvia = Just (mktyp v)
+        }
+
+cvtsyn :: ISyn -> Derive' -> Syn
+cvtsyn isyn (fmap mknam . getderive' -> der)
+  | ISynData {isnam, isflds} <- isyn =
+      SynData
+        { synnam = mknam isnam,
+          synflds = map cvtfld isflds,
+          synders = der
+        }
+  | ISynNewtype {isnam, isfld1} <- isyn =
+      SynNewtype
+        { synnam = mknam isnam,
+          synfld =
+            case isfld1 of
+              IField fld -> Right $ cvtfld fld
+              IType v -> Left v,
+          synders = der
+        }
+  | ISynAlias {isnam, isdest} <- isyn =
+      SynAlias
+        { synnam = mknam isnam,
+          syndest = mktyp isdest
+        }
 
 -- roughly an identifier; a non-strict superset
 identifier :: Parser String
@@ -178,8 +242,15 @@ identifier = (:) <$> headchar <*> M.many bodychar
     headchar = M.letterChar <|> M.char '_' <|> M.char '\''
     bodychar = M.alphaNumChar <|> M.char '_' <|> M.char '\''
 
+-- dirty hack; allows not only identifiers but general type names
+idchar :: Parser Char
+idchar = M.alphaNumChar <|> M.char '_' <|> M.char '\'' <|> M.char ' '
+    <|> M.char '(' <|> M.char ')' <|> M.char ',' <|> M.char ':'
+    <|> M.char '[' <|> M.char ']' <|> M.char '=' <|> M.char '.'
+    <|> M.char '<' <|> M.char '>' <|> M.char '-' <|> M.char '|'
+
 lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+lexeme = L.lexeme scnonl
 
 scnonl :: Parser ()
 scnonl = L.space
@@ -187,32 +258,34 @@ scnonl = L.space
   do L.skipLineComment "--"
   do L.skipBlockComment "{-" "-"
 
-data ViaInfo
-  = Plain String
-  | WithVia String String
-  deriving (Show)
-
--- always succeeds
 untileol :: Parser String
 untileol = M.manyTill M.anySingle do
+  M.lookAhead (M.eof <|> void M.eol)
+
+untileol1 :: Parser String
+untileol1 = M.someTill M.anySingle do
   M.lookAhead (M.eof <|> void M.eol)
 
 untileol' :: Parser Char -> Parser String
 untileol' p = M.manyTill p do
   M.lookAhead (M.eof <|> void M.eol)
 
+untileol1' :: Parser Char -> Parser String
+untileol1' p = M.someTill p do
+  M.lookAhead (M.eof <|> void M.eol)
+
 -- fails if there is no via
 untilvia :: Parser String
-untilvia = M.manyTill M.anySingle do
-  M.lookAhead (M.try (void (M.space1 *> M.string "via")))
+untilvia = M.manyTill idchar do
+  M.lookAhead (M.try (void M.eol <|> void (M.space1 *> M.string "via")))
 
 itype :: Parser ViaInfo
 itype =
   choice
     [ WithVia
         <$> M.try (lexeme untilvia)
-        <*> M.try (lexeme (M.string "via") *> lexeme untileol),
-      Plain <$> untileol
+        <*> M.try (lexeme (M.string "via") *> lexeme (untileol1' idchar)),
+      Plain <$> untileol1' idchar
     ]
 
 iparsefield :: Parser ISynFld
@@ -227,30 +300,35 @@ iparsefield = do
 block :: Parser a -> Parser [a]
 block p = many do L.indentGuard sc GT M.pos1 *> p
 
+indentblock :: Parser a -> Parser b -> Parser (a, [b])
+indentblock p1 p2 = L.indentBlock sc do
+  i <- p1
+  pure $ L.IndentMany Nothing (pure . (i,)) p2
+
 iparsedata :: Parser ISyn
 iparsedata = do
-  void $ lexeme (M.string "data")
-  isnam <- lexeme identifier
-  isflds <- block do iparsefield
+  let hparse = lexeme (M.string "data") *> lexeme identifier
+  (isnam, isflds) <- dbg "iparsedata1" $ indentblock hparse iparsefield
   pure $ ISynData {isnam, isflds}
 
 -- using record syntax
 iparsenewtype1 :: Parser ISyn
 iparsenewtype1 = do
-  void $ lexeme (M.string "newtype")
-  isnam <- lexeme identifier
-  fields <- block do iparsefield
-  case fields of
+  let hparse = lexeme (M.string "newtype") *> lexeme identifier
+  (isnam, isfld1_) <- dbg "ipf" $ indentblock hparse iparsefield
+  case isfld1_ of
     [IField -> isfld1] -> pure $ ISynNewtype {isnam, isfld1}
     _ -> fail "newtype must have exactly one field"
 
 -- using non-record syntax
 iparsenewtype2 :: Parser ISyn
 iparsenewtype2 = do
-  void $ lexeme (M.string "newtype")
-  isnam <- lexeme identifier
-  isfld1 <- IType <$> itype
-  pure $ ISynNewtype {isnam, isfld1}
+  let hparse = lexeme (M.string "newtype") *> lexeme identifier
+  (isnam, isfld1_) <- indentblock hparse itype
+  case isfld1_ of
+    [isfld1] -> 
+      pure $ ISynNewtype {isnam, isfld1 = IType isfld1}
+    _ -> fail "newtype must have exactly one field"
 
 iparsenewtype :: Parser ISyn
 iparsenewtype = M.try iparsenewtype1 <|> iparsenewtype2
@@ -264,33 +342,48 @@ itypealias = do
 
 coerceheader :: Parser CoerceHeader
 coerceheader = do
-  -- directives after .coerce must begin in the next line
-  void $ lexeme (M.string ".coerce" <* M.hspace <* M.eol)
-  CoerceHeader . catMaybes <$> block do
-    -- the very last word is the function name
-    -- everything to the left is the class name
-    -- NOTE ON LAZINESS: diverges if not matched strictly
-    !names <- words <$> M.someTill M.anySingle (void M.eol <|> M.eof)
-    case names of
-      [] -> pure Nothing
-      [_] -> fail "no class name"
-      _ ->
-        pure $
-          Just $
-            CoercePair
-              { cpclass = unwords $ init names,
-                cpfun = last names
-              }
+  let hparse = lexeme (M.string ".coerce")
+  (_, !a) <- indentblock hparse (many (lexeme identifier))
+  let b = [CoercePair {cpclass = unwords (init x), cpfun = last x} | x <- a]
+  pure $ CoerceHeader b
 
 deriveheader :: Parser Derive'
 deriveheader = do
-  -- list doesn't have to begin in the next line
-  void $ lexeme (M.string ".derive" <* M.space1)
-  -- see note on laziness above
-  !a <-
-    Derive' . words . unwords <$> block do
-      M.someTill M.anySingle (void M.eol <|> M.eof)
-  pure a
+  let hparse = lexeme (M.string ".derive")
+  (_, !a) <- indentblock hparse (many (lexeme identifier))
+  pure $ Derive' $ join a
 
 header :: Parser (CoerceHeader, Derive')
-header = (,) <$> coerceheader <*> deriveheader
+header = do
+  ch <- coerceheader
+  dh <- deriveheader
+  pure (ch, dh)
+
+parseisyn :: Parser ISyn
+parseisyn = M.choice [iparsedata, iparsenewtype, itypealias]
+
+-- FIXME: add proper error handling
+parseisyns :: Parser [ISyn]
+parseisyns = M.space *> (dbg "aa" $ M.many do M.try parseisyn)
+
+parsei :: Parser ((CoerceHeader, Derive'), [ISyn])
+parsei = (,) <$> header <*> parseisyns
+
+testbody1 = unlines [
+    ".coerce",
+    "  Pack mkpackdecls",
+    "  Unpack mkunpackdecls",
+    "",
+    ".derive",
+    "  Eq Ord Show Read",
+    "  Generic Typeable Data",
+    "",
+    "data Person",
+    "  age :: Int32 via Age",
+    "  name :: String via (VerifyLength 1 10 String)",
+    "  email :: String via (VerifyEmail String)",
+    "",
+    "newtype Age",
+    "  getage :: Int32",
+    ""
+  ]
