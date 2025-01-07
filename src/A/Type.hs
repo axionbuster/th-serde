@@ -10,78 +10,79 @@ import Language.Haskell.TH as TH
 -- | convert a 'Type' to a 'TH.Type'
 class ToTH a where
   -- | convert a 'Type' to a 'TH.Type'
-  toth :: a -> Q TH.Type
+  toth :: a -> TH.Type
 
 instance ToTH Exts.Type where
   toth = \case
     -- basic mappings
-    TyVar n -> pure $ VarT (mkName $ prettyPrint n)
-    TyCon n -> pure $ ConT (mkName $ prettyPrint n)
-    TyApp f x -> AppT <$> toth f <*> toth x
-    TyList t -> pure ListT `appT` toth t
-    TyParen t -> ParensT <$> toth t
+    TyVar n -> VarT (mkName $ prettyPrint n)
+    TyCon n -> ConT (mkName $ prettyPrint n)
+    TyApp f x -> AppT (toth f) (toth x)
+    TyList t -> AppT ListT (toth t)
+    TyParen t -> ParensT (toth t)
     -- tuples need special handling
-    TyTuple _ ts -> do
+    TyTuple _ ts ->
       let n = length ts
-      apps <- traverse toth ts
-      pure $ foldl' AppT (TupleT n) apps
+          apps = map toth ts
+       in foldl' AppT (TupleT n) apps
     -- functions
-    TyFun a b -> pure ArrowT `appT` toth a `appT` toth b
+    TyFun a b -> AppT (AppT ArrowT (toth a)) (toth b)
     -- complex cases
-    TyForall tvs ctx t -> do
-      tvs' <- traverse tothtyvarbndr (maybe [] id tvs)
-      let ctx_
-            | Just (CxSingle a) <- ctx = [a]
-            | Just (CxTuple as) <- ctx = as
-            | Just CxEmpty <- ctx = []
-            | otherwise = []
-      ctx' <- traverse tothpred ctx_
-      t' <- toth t
-      pure $ ForallT tvs' ctx' t'
+    TyForall tvs ctx t ->
+      let tvs' = map tothtyvarbndr (maybe [] id tvs)
+          ctx_ = case ctx of
+            Just (CxSingle a) -> [a]
+            Just (CxTuple as) -> as
+            Just CxEmpty -> []
+            _ -> []
+          ctx' = map tothpred ctx_
+       in ForallT tvs' ctx' (toth t)
     TyPromoted prom -> case prom of
       PromotedInteger n _ ->
-        pure $ LitT (NumTyLit n)
+        LitT (NumTyLit n)
       PromotedString s _ ->
-        pure $ LitT (StrTyLit s)
+        LitT (StrTyLit s)
       PromotedCon _ n ->
-        pure $ PromotedT (mkName $ prettyPrint n)
-      PromotedList _ ts -> do
-        ts' <- traverse toth ts
-        pure $
-          foldr
-            (\x acc -> PromotedConsT `AppT` x `AppT` acc)
-            PromotedNilT
-            ts'
-      PromotedTuple ts -> do
-        ts' <- traverse toth ts
-        pure $ foldl' AppT (PromotedTupleT (length ts)) ts'
+        PromotedT (mkName $ prettyPrint n)
+      PromotedList _ ts ->
+        foldr
+          (\x acc -> PromotedConsT `AppT` x `AppT` acc)
+          PromotedNilT
+          (map toth ts)
+      PromotedTuple ts ->
+        foldl' AppT (PromotedTupleT (length ts)) (map toth ts)
       PromotedUnit ->
-        pure $ PromotedTupleT 0
+        PromotedTupleT 0
     -- other cases need implementation
-    TyStar -> fail "toth: unsupported TyStar"
-    TyUnboxedSum _ -> fail "toth: unsupported TyUnboxedSum"
-    TyParArray _ -> fail "toth: unsupported TyParArray"
-    TyInfix _ _ _ -> fail "toth: unsupported TyInfix"
-    TyKind _ _ -> fail "toth: unsupported TyKind"
-    TyEquals _ _ -> fail "toth: unsupported TyEquals"
-    TySplice _ -> fail "toth: unsupported TySplice"
-    TyBang _ _ _ -> fail "toth: unsupported TyBang"
-    TyWildCard _ -> fail "toth: unsupported TyWildCard"
-    TyQuasiQuote _ _ -> fail "toth: unsupported TyQuasiQuote"
+    TyStar -> error "toth: unsupported TyStar"
+    TyUnboxedSum _ -> error "toth: unsupported TyUnboxedSum"
+    TyParArray _ -> error "toth: unsupported TyParArray"
+    TyInfix _ _ _ -> error "toth: unsupported TyInfix"
+    TyKind _ _ -> error "toth: unsupported TyKind"
+    TyEquals _ _ -> error "toth: unsupported TyEquals"
+    TySplice _ -> error "toth: unsupported TySplice"
+    TyBang _ _ _ -> error "toth: unsupported TyBang"
+    TyWildCard _ -> error "toth: unsupported TyWildCard"
+    TyQuasiQuote _ _ -> error "toth: unsupported TyQuasiQuote"
 
-tothtyvarbndr :: TyVarBind -> Q (TyVarBndr Specificity)
+tothtyvarbndr :: TyVarBind -> TyVarBndr Specificity
 tothtyvarbndr = \case
-  KindedVar n k -> do
-    k' <- toth k
-    pure $ KindedTV (mkName $ prettyPrint n) SpecifiedSpec k'
+  KindedVar n k ->
+    let k' = toth k
+     in KindedTV (mkName $ prettyPrint n) SpecifiedSpec k'
   UnkindedVar n ->
-    pure $ PlainTV (mkName $ prettyPrint n) SpecifiedSpec
+    PlainTV (mkName $ prettyPrint n) SpecifiedSpec
 
-tothpred :: Asst -> Q TH.Pred
+tothpred :: Asst -> TH.Type
 tothpred = \case
   TypeA n -> toth n
-  IParam n t -> do
-    t' <- toth t
-    -- drop the '?' prefix
-    pure $ ImplicitParamT (drop 1 $ prettyPrint n) t'
+  IParam n t ->
+    let t' = toth t
+     in ImplicitParamT (drop 1 $ prettyPrint n) t'
   ParenA a -> tothpred a
+
+-- | used for testing
+--
+-- >>> :t $(_dbgasexp (pure $ toth mytype))
+_dbgasexp :: TH.Type -> Q TH.Exp
+_dbgasexp t = pure $ SigE (VarE 'undefined) t
