@@ -102,21 +102,23 @@ typechars :: Parser Char
 typechars = M.alphaNumChar <|> M.oneOf "_'() ,:[]=.<>-|"
 
 untileol :: Parser Char -> Parser String
-untileol p = M.manyTill p (M.lookAhead (M.eof <|> void M.eol))
+untileol p = M.try $ M.manyTill p (M.lookAhead (M.eof <|> void M.eol))
 
 untilvia :: Parser String
 untilvia =
-  M.manyTill typechars $
-    M.lookAhead (M.try (void M.eol <|> void (M.space1 *> M.string "via")))
+  M.try $
+    M.manyTill typechars $
+      M.lookAhead (void M.eol <|> void (M.space1 *> M.string "via"))
 
 -- Main parsers
 parsetype :: Parser ViaInfo
 parsetype =
   M.choice
-    [ WithVia
-        <$> M.try (lexeme untilvia)
-        <*> M.try (lexeme (M.string "via") *> lexeme (untileol M.anySingle)),
-      Plain <$> untileol M.anySingle
+    [ M.try $
+        WithVia
+          <$> lexeme untilvia
+          <*> (lexeme (M.string "via") *> lexeme (untileol M.anySingle)),
+      Plain <$> lexeme (untileol M.anySingle)
     ]
 
 parsefield :: Parser ISynFld
@@ -142,18 +144,20 @@ parsedata = do
 parsenewtype :: Parser ISyn
 parsenewtype = M.try parsenewtype1 <|> parsenewtype2
   where
+    guardf [] m = fail $ "parsenewtype: a newtype must have exactly one " ++ m
+    guardf [f] _ = pure f
+    guardf _ m = fail $ "parsenewtype: a newtype must have exactly one " ++ m
     parsenewtype1 = do
-      (isnam, [isfld]) <-
+      (isnam, flds) <-
         indentblock
           (lexeme (M.string "newtype") *> lexeme identifier)
           parsefield
-      pure ISynNewtype {isnam, isfld1 = IField isfld}
-
+      f <- guardf flds "field"
+      pure ISynNewtype {isnam, isfld1 = IField f}
     parsenewtype2 = do
-      (isnam, [typ]) <-
-        indentblock
-          (lexeme (M.string "newtype") *> lexeme identifier)
-          parsetype
+      void $ lexeme (M.string "newtype")
+      isnam <- lexeme identifier
+      typ <- parsetype
       pure ISynNewtype {isnam, isfld1 = IType typ}
 
 parsealias :: Parser ISyn
@@ -165,7 +169,7 @@ parsealias = do
 
 parsecoerce :: Parser CoerceHeader
 parsecoerce = do
-  (_, pairs) <-
+  (_, !pairs) <-
     indentblock
       (lexeme (M.string ".coerce"))
       (many (lexeme identifier))
@@ -175,7 +179,7 @@ parsecoerce = do
 
 parsederive :: Parser Derive
 parsederive = do
-  (_, classes) <-
+  (_, !classes) <-
     indentblock
       (lexeme (M.string ".derive"))
       (many (lexeme identifier))
@@ -185,10 +189,20 @@ parseheader :: Parser (CoerceHeader, Derive)
 parseheader = (,) <$> parsecoerce <*> parsederive
 
 parsesyn :: Parser ISyn
-parsesyn = M.choice [parsedata, parsenewtype, parsealias]
+parsesyn =
+  M.try $
+    M.choice
+      [ M.try parsedata,
+        M.try parsenewtype,
+        M.try parsealias
+      ]
 
 parsetop :: Parser ((CoerceHeader, Derive), [ISyn])
-parsetop = (,) <$> parseheader <*> (M.space *> many (M.try parsesyn))
+parsetop = do
+  h <- parseheader
+  decls <- parsesyn `M.sepEndBy1` M.space
+  M.eof
+  pure (h, decls)
 
 -- test (when using GHCi)
 _testbody1 :: String

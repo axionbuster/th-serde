@@ -6,15 +6,13 @@ import Data.Int
 import GHC.Generics
 import GHC.TypeLits
 
--- Test types needed
-newtype Age = Age Int32
+newtype VerifyLength (min :: Nat) (max :: Nat) a
+  = VerifyLength a
   deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
 
-newtype VerifyLength (min :: Nat) (max :: Nat) a = 
-  VerifyLength a deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
-
-newtype VerifyEmail a = 
-  VerifyEmail a deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
+newtype VerifyEmail a
+  = VerifyEmail a
+  deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
 
 [serde|
 .coerce
@@ -29,6 +27,13 @@ data Person
   age :: Int32 via Age
   name :: String via (VerifyLength 1 10 String)
   email :: String via (VerifyEmail String)
+
+newtype Age
+  getage :: Int32
+
+newtype Great String
+
+type MyAlias String
 |]
 
 main :: IO ()

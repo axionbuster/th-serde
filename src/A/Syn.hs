@@ -197,8 +197,8 @@ fromisyn der0 = do
 -- | parse quasi-quoted syntax
 parse :: String -> Either String Parsed
 parse s =
-  let res = M.runParser parsetop "" s
+  let res = M.runParser (parsetop <* M.eof) "" s
    in case res of
         Right ((co, de), fmap (fromisyn de) -> ds) ->
           Right $ Parsed ds co de
-        Left e -> Left $ show e
+        Left e -> Left $ M.errorBundlePretty e

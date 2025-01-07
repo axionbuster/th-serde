@@ -31,7 +31,7 @@ instance ToTH Exts.Type where
     TyFun a b -> AppT (AppT ArrowT (toth a)) (toth b)
     -- complex cases
     TyForall tvs ctx t ->
-      let tvs' = map tothtyvarbndr (fromMaybe [] tvs)
+      let tvs' = maybe [] (map tothtyvarbndr) tvs
           ctx_ = case ctx of
             Just (CxSingle a) -> [a]
             Just (CxTuple as) -> as
