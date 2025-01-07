@@ -102,35 +102,61 @@
 -- they are not given in the shadow type, but in the data type
 --
 -- shadow types only implement: 'Generic', 'Typeable', and 'Data'
-module A.Syn where
+module A.Syn
+  ( -- * parsing
+    Parsed (..),
+    parse,
+
+    -- * syntax
+    Syn (..),
+    SynFld (..),
+    ViaInfo (..),
+    CoerceHeader (..),
+    CoercePair (..),
+
+    -- * re-export
+    Name,
+    Type,
+  )
+where
 
 import A.ISyn
-import Language.Haskell.Exts.Extension
-import Language.Haskell.Exts.Parser
-import Language.Haskell.Exts.SrcLoc
-import Language.Haskell.Exts.Syntax
+import Language.Haskell.Exts.Simple.Extension
+import Language.Haskell.Exts.Simple.Parser hiding (parse)
+import Language.Haskell.Exts.Simple.Syntax
+import Text.Megaparsec qualified as M
 
+-- | parsed data
+data Parsed = Parsed
+  { declarations :: [Syn],
+    coersions :: CoerceHeader,
+    derives :: Derive
+  }
+  deriving (Show)
+
+-- | a declaration
 data Syn
   = SynData
-      { synnam :: Name SrcSpanInfo, -- type/con name
+      { synnam :: Name, -- type/con name
         synflds :: [SynFld], -- fields
-        synders :: [Name SrcSpanInfo] -- deriving classes
+        synders :: [Name] -- deriving classes
       }
   | SynNewtype
-      { synnam :: Name SrcSpanInfo,
+      { synnam :: Name,
         synfld :: Either ViaInfo SynFld,
-        synders :: [Name SrcSpanInfo]
+        synders :: [Name]
       }
   | SynAlias
-      { synnam :: Name SrcSpanInfo,
-        syndest :: Type SrcSpanInfo -- destination type
+      { synnam :: Name,
+        syndest :: Type -- destination type
       }
   deriving (Show)
 
+-- | field information
 data SynFld = SynFld
-  { synfnam :: Name SrcSpanInfo, -- field name
-    synftyp :: Type SrcSpanInfo, -- target type
-    synfvia :: Maybe (Type SrcSpanInfo) -- via type if any
+  { synfnam :: Name, -- field name
+    synftyp :: Type, -- target type
+    synfvia :: Maybe (Type) -- via type if any
   }
   deriving (Show)
 
@@ -157,7 +183,7 @@ fromisyn der0 = do
         SynNewtype (name n) (Right (SynFld (name n) s (Just u))) der
     ISynAlias n d -> SynAlias (name n) (parsetype d)
   where
-    name n = Ident noSrcSpan n
+    name n = Ident n
     parsetype t = case parseTypeWithMode pm1 t of
       ParseOk x -> x
       ParseFailed _ e -> error $ "parsetype: " ++ show e
@@ -167,3 +193,12 @@ fromisyn der0 = do
       Right (s, u) -> SynFld (name n) s (Just u)
     fromviainfo (Plain t) = Left (parsetype t)
     fromviainfo (WithVia t s) = Right (parsetype t, parsetype s)
+
+-- | parse quasi-quoted syntax
+parse :: String -> Either String Parsed
+parse s =
+  let res = M.runParser parsetop "" s
+   in case res of
+        Right ((co, de), fmap (fromisyn de) -> ds) ->
+          Right $ Parsed ds co de
+        Left e -> Left $ show e

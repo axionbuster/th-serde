@@ -40,7 +40,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base
-    , haskell-src-exts
+    , haskell-src-exts-simple
     , haskell-src-meta
     , megaparsec
     , parser-combinators
@@ -64,7 +64,7 @@ test-suite macserde2-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base
-    , haskell-src-exts
+    , haskell-src-exts-simple
     , haskell-src-meta
     , macserde2
     , megaparsec

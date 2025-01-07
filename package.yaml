@@ -29,7 +29,7 @@ default-extensions:
 dependencies:
 - base
 - template-haskell
-- haskell-src-exts
+- haskell-src-exts-simple
 - haskell-src-meta
 - megaparsec
 - pretty-show
