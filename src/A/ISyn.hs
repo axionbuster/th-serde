@@ -13,6 +13,9 @@ module A.ISyn
     CoerceHeader (..),
     Derive (..),
     Parser,
+
+    -- * debug
+    _testbody1,
   )
 where
 
