@@ -85,7 +85,7 @@
 --  Generic Typeable Data
 -- @
 --
--- ___ @.coerce@ ___
+-- __ @.coerce@ __
 --
 -- @.coerce@ defines how to coerce between the shadow type and the data type
 --
@@ -94,7 +94,7 @@
 --
 -- both the type class and the function must be in scope
 --
--- ___ @.derive@ ___
+-- __ @.derive@ __
 --
 -- @.derive@ defines which type classes to derive for all types defined in
 -- the module
@@ -156,7 +156,7 @@ data Syn
 data SynFld = SynFld
   { synfnam :: Name, -- field name
     synftyp :: Type, -- target type
-    synfvia :: Maybe (Type) -- via type if any
+    synfvia :: Maybe Type -- via type if any
   }
   deriving (Show)
 

@@ -1,7 +1,8 @@
 -- | conversion of 'Language.Haskell.Exts.Simple.Syntax.Type' to
 -- 'Language.Haskell.Syntax.Type'
-module A.Type (ToTH (..)) where
+module A.Type (ToTH (..), cvtnam, cvtder) where
 
+import A.ISyn (Derive (..))
 import Data.List (foldl')
 import Language.Haskell.Exts.Simple.Pretty as Exts
 import Language.Haskell.Exts.Simple.Syntax as Exts
@@ -80,6 +81,15 @@ tothpred = \case
     let t' = toth t
      in ImplicitParamT (drop 1 $ prettyPrint n) t' -- drop '?'
   ParenA a -> tothpred a
+
+-- | convert a 'Name' to a 'TH.Name'
+--
+-- qualification gets handled syntactically
+cvtnam :: Exts.Name -> TH.Name
+cvtnam = mkName . prettyPrint
+
+cvtder :: Derive -> [TH.Type]
+cvtder = map (ConT . mkName) . getderive
 
 -- | used for testing
 --

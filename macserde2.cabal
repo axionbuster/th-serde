@@ -27,6 +27,7 @@ library
   exposed-modules:
       A.ISyn
       A.Syn
+      A.TH
       A.Type
   other-modules:
       Paths_macserde2
@@ -49,6 +50,7 @@ library
     , parser-combinators
     , pretty-show
     , template-haskell
+    , transformers
   default-language: GHC2021
 
 test-suite macserde2-test
@@ -76,4 +78,5 @@ test-suite macserde2-test
     , parser-combinators
     , pretty-show
     , template-haskell
+    , transformers
   default-language: GHC2021
