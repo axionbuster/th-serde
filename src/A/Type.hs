@@ -78,7 +78,7 @@ tothpred = \case
   TypeA n -> toth n
   IParam n t ->
     let t' = toth t
-     in ImplicitParamT (drop 1 $ prettyPrint n) t'
+     in ImplicitParamT (drop 1 $ prettyPrint n) t' -- drop '?'
   ParenA a -> tothpred a
 
 -- | used for testing
