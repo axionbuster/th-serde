@@ -1,16 +1,10 @@
 -- | template Haskell generator
-module A.TH (R, gendecs) where
+module A.TH (gendecs) where
 
 import A.Syn
 import A.Type
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Reader
-import Language.Haskell.TH as TH
-import Language.Haskell.TH.Quote as TH
-import Language.Haskell.TH.Syntax as TH hiding (lift)
-
--- internal reader monad for the generator
-type R = ReaderT Parsed Q
+import Data.Maybe
+import Language.Haskell.TH.Syntax as TH
 
 bang0 :: Bang
 bang0 = Bang NoSourceUnpackedness NoSourceStrictness
@@ -78,8 +72,11 @@ genalias SynAlias {synnam, syndest} =
    in TySynD n [] t
 genalias _ = error "genalias: not an alias"
 
--- | generate a declaration
+-- | generate declarations for a 'Syn' object (e.g., data, newtype, alias)
 gendecs :: Syn -> [Dec]
-gendecs s@SynData {} = [gendat s, genshadata s]
+gendecs s@SynData {synflds} = gendat s : sha
+  where
+    sha | any (isJust . synfvia) synflds = [genshadata s]
+        | otherwise = []
 gendecs s@SynNewtype {} = [gennew s]
 gendecs s@SynAlias {} = [genalias s]

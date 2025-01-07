@@ -34,6 +34,11 @@ newtype Age
 newtype Great String
 
 type MyAlias VerifyEmail String
+
+-- this should not shadow
+data Noshadow
+  noshadow :: Int32
+  anotherfield :: String
 |]
 
 main :: IO ()
