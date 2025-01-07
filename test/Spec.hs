@@ -25,15 +25,15 @@ newtype VerifyEmail a
 
 data Person
   age :: Int32 via Age
-  name :: String via (VerifyLength 1 10 String)
-  email :: String via (VerifyEmail String)
+  name :: String via VerifyLength 1 10 String
+  email :: String via VerifyEmail String
 
 newtype Age
   getage :: Int32
 
 newtype Great String
 
-type MyAlias String
+type MyAlias VerifyEmail String
 |]
 
 main :: IO ()
