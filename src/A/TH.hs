@@ -72,11 +72,15 @@ genalias SynAlias {synnam, syndest} =
    in TySynD n [] t
 genalias _ = error "genalias: not an alias"
 
+-- has a shadowing field?
+shadowing :: Syn -> Bool
+shadowing SynData {synflds} = any (isJust . synfvia) synflds
+
 -- | generate declarations for a 'Syn' object (e.g., data, newtype, alias)
 gendecs :: Syn -> [Dec]
-gendecs s@SynData {synflds} = gendat s : sha
+gendecs s@SynData {} = gendat s : sha
   where
-    sha | any (isJust . synfvia) synflds = [genshadata s]
+    sha | shadowing s = [genshadata s]
         | otherwise = []
 gendecs s@SynNewtype {} = [gennew s]
 gendecs s@SynAlias {} = [genalias s]

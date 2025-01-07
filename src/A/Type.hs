@@ -83,12 +83,13 @@ tothpred = \case
      in ImplicitParamT (drop 1 $ prettyPrint n) t' -- drop '?'
   ParenA a -> tothpred a
 
--- | convert a 'Name' to a 'TH.Name'
+-- | convert a Exts.'Exts.Name' to a TH.'TH.Name'
 --
 -- qualification gets handled syntactically
 cvtnam :: Exts.Name -> TH.Name
 cvtnam = mkName . prettyPrint
 
+-- | convert a 'Derive' to a list of TH.'TH.Type's
 cvtder :: Derive -> [TH.Type]
 cvtder = map (ConT . mkName) . getderive
 
