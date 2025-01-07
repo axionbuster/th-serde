@@ -26,6 +26,8 @@ default-extensions:
 - ViewPatterns
 - LambdaCase
 - TemplateHaskell
+- QuasiQuotes
+- DataKinds
 
 dependencies:
 - base

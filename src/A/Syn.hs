@@ -183,7 +183,7 @@ fromisyn der0 = do
         SynNewtype (name n) (Right (SynFld (name n) s (Just u))) der
     ISynAlias n d -> SynAlias (name n) (parsetype d)
   where
-    name n = Ident n
+    name = Ident
     parsetype t = case parseTypeWithMode pm1 t of
       ParseOk x -> x
       ParseFailed _ e -> error $ "parsetype: " ++ show e

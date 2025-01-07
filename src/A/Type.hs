@@ -4,6 +4,7 @@ module A.Type (ToTH (..), cvtnam, cvtder) where
 
 import A.ISyn (Derive (..))
 import Data.List (foldl')
+import Data.Maybe (fromMaybe)
 import Language.Haskell.Exts.Simple.Pretty as Exts
 import Language.Haskell.Exts.Simple.Syntax as Exts
 import Language.Haskell.TH as TH
@@ -30,7 +31,7 @@ instance ToTH Exts.Type where
     TyFun a b -> AppT (AppT ArrowT (toth a)) (toth b)
     -- complex cases
     TyForall tvs ctx t ->
-      let tvs' = map tothtyvarbndr (maybe [] id tvs)
+      let tvs' = map tothtyvarbndr (fromMaybe [] tvs)
           ctx_ = case ctx of
             Just (CxSingle a) -> [a]
             Just (CxTuple as) -> as
@@ -47,24 +48,24 @@ instance ToTH Exts.Type where
         PromotedT (mkName $ prettyPrint n)
       PromotedList _ ts ->
         foldr
-          (\x acc -> PromotedConsT `AppT` x `AppT` acc)
+          ((\x acc -> PromotedConsT `AppT` x `AppT` acc) . toth)
           PromotedNilT
-          (map toth ts)
+          ts
       PromotedTuple ts ->
         foldl' AppT (PromotedTupleT (length ts)) (map toth ts)
       PromotedUnit ->
         PromotedTupleT 0
     -- other cases need implementation
     TyStar -> error "toth: unsupported TyStar"
-    TyUnboxedSum _ -> error "toth: unsupported TyUnboxedSum"
-    TyParArray _ -> error "toth: unsupported TyParArray"
-    TyInfix _ _ _ -> error "toth: unsupported TyInfix"
-    TyKind _ _ -> error "toth: unsupported TyKind"
-    TyEquals _ _ -> error "toth: unsupported TyEquals"
-    TySplice _ -> error "toth: unsupported TySplice"
-    TyBang _ _ _ -> error "toth: unsupported TyBang"
-    TyWildCard _ -> error "toth: unsupported TyWildCard"
-    TyQuasiQuote _ _ -> error "toth: unsupported TyQuasiQuote"
+    TyUnboxedSum {} -> error "toth: unsupported TyUnboxedSum"
+    TyParArray {} -> error "toth: unsupported TyParArray"
+    TyInfix {} -> error "toth: unsupported TyInfix"
+    TyKind {} -> error "toth: unsupported TyKind"
+    TyEquals {} -> error "toth: unsupported TyEquals"
+    TySplice {} -> error "toth: unsupported TySplice"
+    TyBang {} -> error "toth: unsupported TyBang"
+    TyWildCard {} -> error "toth: unsupported TyWildCard"
+    TyQuasiQuote {} -> error "toth: unsupported TyQuasiQuote"
 
 tothtyvarbndr :: TyVarBind -> TyVarBndr Specificity
 tothtyvarbndr = \case

@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       A.ISyn
+      A.QQ
       A.Syn
       A.TH
       A.Type
@@ -40,6 +41,8 @@ library
       ViewPatterns
       LambdaCase
       TemplateHaskell
+      QuasiQuotes
+      DataKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base
@@ -67,6 +70,8 @@ test-suite macserde2-test
       ViewPatterns
       LambdaCase
       TemplateHaskell
+      QuasiQuotes
+      DataKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base
