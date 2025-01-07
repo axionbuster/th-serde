@@ -47,7 +47,11 @@ instance ToTH Exts.Type where
         pure $ PromotedT (mkName $ prettyPrint n)
       PromotedList _ ts -> do
         ts' <- traverse toth ts
-        pure $ foldr (\x acc -> PromotedConsT `AppT` x `AppT` acc) PromotedNilT ts'
+        pure $
+          foldr
+            (\x acc -> PromotedConsT `AppT` x `AppT` acc)
+            PromotedNilT
+            ts'
       PromotedTuple ts -> do
         ts' <- traverse toth ts
         pure $ foldl' AppT (PromotedTupleT (length ts)) ts'
