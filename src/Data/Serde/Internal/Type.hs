@@ -1,8 +1,8 @@
 -- | conversion of 'Language.Haskell.Exts.Simple.Syntax.Type' to
 -- 'Language.Haskell.Syntax.Type'
-module Data.Serde.Type (ToTH (..), cvtnam, cvtder) where
+module Data.Serde.Internal.Type (ToTH (..), cvtnam, cvtder) where
 
-import Data.Serde.ISyn (Derive (..))
+import Data.Serde.Internal.ISyn (Derive (..))
 import Data.List (foldl')
 import Language.Haskell.Exts.Simple.Pretty as Exts
 import Language.Haskell.Exts.Simple.Syntax as Exts

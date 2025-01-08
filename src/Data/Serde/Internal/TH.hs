@@ -1,13 +1,13 @@
 -- | template Haskell generator
-module Data.Serde.TH
+module Data.Serde.Internal.TH
   ( runqq1,
     runusercoercion,
     RunUserCoercion (..),
   )
 where
 
-import Data.Serde.Syn
-import Data.Serde.Type
+import Data.Serde.Internal.Syn
+import Data.Serde.Internal.Type
 import Data.Coerce
 import Data.Foldable
 import Data.Maybe

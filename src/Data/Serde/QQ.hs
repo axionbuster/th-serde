@@ -1,5 +1,8 @@
 -- | quasi-quotation for th-serde
 --
+-- This is the main stable interface for the th-serde library.
+-- Other modules are considered internal and may change without notice.
+--
 -- a lightweight syntax for defining data types, newtypes, and type aliases
 -- for serialization and validation
 --
@@ -87,7 +90,7 @@
 -- shadow types only implement: 'Generic', 'Typeable', and 'Data'
 module Data.Serde.QQ (serde, RunUserCoercion (..), runusercoercion) where
 
-import Data.Serde.TH
+import Data.Serde.Internal.TH
 import Language.Haskell.TH.Quote as TH
 
 -- | quasi-quoter for th-serde

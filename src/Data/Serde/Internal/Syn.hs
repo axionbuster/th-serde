@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
 -- | define syntax
-module Data.Serde.Syn
+module Data.Serde.Internal.Syn
   ( -- * parsing
     Parsed (..),
     parse,
@@ -18,7 +18,7 @@ module Data.Serde.Syn
   )
 where
 
-import Data.Serde.ISyn
+import Data.Serde.Internal.ISyn
 import Language.Haskell.Exts.Simple.Extension
 import Language.Haskell.Exts.Simple.Parser hiding (parse)
 import Language.Haskell.Exts.Simple.Syntax

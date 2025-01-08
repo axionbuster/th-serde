@@ -33,11 +33,11 @@ source-repository head
 
 library
   exposed-modules:
-      Data.Serde.ISyn
+      Data.Serde.Internal.ISyn
+      Data.Serde.Internal.Syn
+      Data.Serde.Internal.TH
+      Data.Serde.Internal.Type
       Data.Serde.QQ
-      Data.Serde.Syn
-      Data.Serde.TH
-      Data.Serde.Type
   other-modules:
       Paths_th_serde
   autogen-modules:

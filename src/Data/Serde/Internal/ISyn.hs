@@ -3,7 +3,7 @@
 -- | intermediate syntax for the parser
 --
 -- see "Data.Serde.Syn" for the grammar
-module Data.Serde.ISyn
+module Data.Serde.Internal.ISyn
   ( parsetop,
     ISyn (..),
     ISynFld (..),
