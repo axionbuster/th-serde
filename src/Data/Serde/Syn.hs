@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 
 -- | define syntax
-module A.Syn
+module Data.Serde.Syn
   ( -- * parsing
     Parsed (..),
     parse,
@@ -18,7 +18,7 @@ module A.Syn
   )
 where
 
-import A.ISyn
+import Data.Serde.ISyn
 import Language.Haskell.Exts.Simple.Extension
 import Language.Haskell.Exts.Simple.Parser hiding (parse)
 import Language.Haskell.Exts.Simple.Syntax
@@ -68,7 +68,7 @@ pm1 =
 
 -- | go from type string to 'Exts'.'Type'
 --
--- you need to use a function from "A.Type" to convert this to a TH.'TH.Type'
+-- you need to use a function from "Data.Serde.Type" to convert this to a TH.'TH.Type'
 parsetypeexts :: String -> Type
 parsetypeexts s = case parseTypeWithMode pm1 s of
   ParseOk x -> x

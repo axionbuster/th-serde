@@ -1,13 +1,10 @@
 module TestTrait (TestTrait (..), derivetesttrait) where
 
-import A.QQ
-import Data.Data
+import Data.Serde.QQ
 import Data.Int
 import Data.Set (Set, singleton)
 import GHC.Generics
 import Language.Haskell.TH as TH
-import Language.Haskell.TH.Quote as TH
-import Language.Haskell.TH.Syntax as TH
 
 class (Show a) => TestTrait a where
   testtrait :: a -> Set String -- collect Show values itself & its fields

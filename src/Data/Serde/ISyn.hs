@@ -2,8 +2,8 @@
 
 -- | intermediate syntax for the parser
 --
--- see "A.Syn" for the grammar
-module A.ISyn
+-- see "Data.Serde.Syn" for the grammar
+module Data.Serde.ISyn
   ( parsetop,
     ISyn (..),
     ISynFld (..),

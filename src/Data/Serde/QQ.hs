@@ -85,9 +85,9 @@
 -- they are not given in the shadow type, but in the data type
 --
 -- shadow types only implement: 'Generic', 'Typeable', and 'Data'
-module A.QQ (serde, RunUserCoercion (..), runusercoercion) where
+module Data.Serde.QQ (serde, RunUserCoercion (..), runusercoercion) where
 
-import A.TH
+import Data.Serde.TH
 import Language.Haskell.TH.Quote as TH
 
 -- | quasi-quoter for serde

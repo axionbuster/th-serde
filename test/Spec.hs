@@ -1,6 +1,6 @@
-module Main where
+module Main (main) where
 
-import A.QQ
+import Data.Serde.QQ
 import Data.Data
 import Data.Int
 import GHC.Generics

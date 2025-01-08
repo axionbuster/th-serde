@@ -25,11 +25,11 @@ source-repository head
 
 library
   exposed-modules:
-      A.ISyn
-      A.QQ
-      A.Syn
-      A.TH
-      A.Type
+      Data.Serde.ISyn
+      Data.Serde.QQ
+      Data.Serde.Syn
+      Data.Serde.TH
+      Data.Serde.Type
   other-modules:
       Paths_macserde2
   autogen-modules:
