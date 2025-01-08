@@ -15,10 +15,6 @@ newtype VerifyEmail a
   deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
 
 [serde|
-.coerce
-  mkpackdecls
-  mkunpackdecls
-
 .derive
   Eq Ord Show Read
   Generic Typeable Data

@@ -53,10 +53,6 @@ data ISynFld = ISynFld
   }
   deriving (Show)
 
--- | represents a coercion definition from the header,
--- containing the function names to use
-type Coerce = [String]
-
 -- | collection of type classes to derive for all defined types
 newtype Derive = Derive
   { getderive :: [String]
@@ -154,14 +150,6 @@ parsealias = do
   isdest <- lexeme (untileol M.anySingle)
   pure ISynAlias {isnam, isdest}
 
-parsecoerce :: Parser Coerce
-parsecoerce = do
-  (_, !funs) <-
-    indentblock
-      (lexeme (M.string ".coerce"))
-      (many (lexeme identifier))
-  pure $ join funs
-
 parsederive :: Parser Derive
 parsederive = do
   (_, !classes) <-
@@ -169,9 +157,6 @@ parsederive = do
       (lexeme (M.string ".derive"))
       (many (lexeme identifier))
   pure $ Derive (join classes)
-
-parseheader :: Parser (Coerce, Derive)
-parseheader = (,) <$> parsecoerce <*> parsederive
 
 parsesyn :: Parser ISyn
 parsesyn =
@@ -182,9 +167,9 @@ parsesyn =
         M.try parsealias
       ]
 
-parsetop :: Parser ((Coerce, Derive), [ISyn])
+parsetop :: Parser (Derive, [ISyn])
 parsetop = do
-  h <- parseheader
+  h <- parsederive
   decls <- parsesyn `M.sepEndBy1` M.space
   M.eof
   pure (h, decls)

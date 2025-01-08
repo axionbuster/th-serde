@@ -73,26 +73,11 @@
 --
 -- __ header __
 --
--- there is a header part that's needed to define the shadow type coercions
---
 -- @
--- .coerce
---  mkpackdecls
---  mkunpackdecls
---
 -- .derive
 --  Eq Ord Show Read
 --  Generic Typeable Data
 -- @
---
--- __ @.coerce@ __
---
--- @.coerce@ defines how to coerce between the shadow type and the data type
---
--- type class name followed by a function that converts the shadow type and
--- the data type to a list of declarations
---
--- both the type class and the function must be in scope
 --
 -- __ @.derive@ __
 --
@@ -128,7 +113,6 @@ import Text.Megaparsec qualified as M
 -- | parsed data
 data Parsed = Parsed
   { declarations :: [Syn],
-    coersions :: [Name],
     derives :: Derive
   }
   deriving (Show)
@@ -203,6 +187,6 @@ parse :: String -> Either String Parsed
 parse s =
   let res = M.runParser (parsetop <* M.eof) "" s
    in case res of
-        Right ((co, de), fmap (fromisyn de) -> ds) ->
-          Right $ Parsed ds (map Ident co) de
+        Right (de, fmap (fromisyn de) -> ds) ->
+          Right $ Parsed ds de
         Left e -> Left $ M.errorBundlePretty e
