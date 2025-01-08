@@ -2,8 +2,6 @@ module A.QQ (serde) where
 
 import A.Syn
 import A.TH
-import A.Type
-import Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote as TH
 
 -- | quasi-quoter for serde
