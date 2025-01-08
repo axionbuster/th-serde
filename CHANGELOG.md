@@ -8,4 +8,16 @@ and this project adheres to the
 
 ## Unreleased
 
-## 0.1.0.0 - YYYY-MM-DD
+## 0.1.0.0 - 2025-01-08
+
+- Initial release of the library
+- `serde` QuasiQuoter for defining data types with validation/serialization
+- Automatic shadow type generation
+- Custom type class derivation support through coercion
+- Support for regular data types and newtypes
+- Type alias support
+- An example
+
+### Dependencies
+- Requires GHC 9.8 or later
+- Uses template-haskell 2.21.0

@@ -12,14 +12,17 @@ extra-source-files:
 - README.md
 - CHANGELOG.md
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
-
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/axionbuster/th-serde#readme>
+description: |
+  A lightweight serialization/deserialization framework for Haskell that uses Template Haskell 
+  and QuasiQuotes to separate data structure definitions from their serialization and validation 
+  logic. It generates shadow types automatically and supports custom type class derivation 
+  through coercion, reducing boilerplate while keeping business logic clean.
+
+  For more information, please refer to the README.md file at
+  <https://github.com/axionbuster/th-serde#readme>.
 
 language: GHC2021
 
@@ -37,17 +40,20 @@ default-extensions:
 - UndecidableInstances
 - ViewPatterns
 
+# conservative with template-haskell due to
+# frequent breaking changes
+
 dependencies:
-- base
-- containers
-- haskell-src-exts
-- haskell-src-exts-simple
-- haskell-src-meta
-- megaparsec
-- parser-combinators
-- pretty-show
-- template-haskell
-- transformers
+- base >= 4.19.0 && < 5
+- containers >= 0.6.8 && < 0.7
+- haskell-src-exts >= 1.23.1 && < 1.24
+- haskell-src-exts-simple >= 1.23.1 && < 1.24
+- haskell-src-meta >= 0.8.14 && < 0.9
+- megaparsec >= 9.6.0 && < 10
+- parser-combinators >= 1.3.0 && < 1.4
+- pretty-show >= 1.10 && < 1.11
+- template-haskell >= 2.21.0 && < 2.22
+- transformers >= 0.6.1 && < 0.7
 
 ghc-options:
 - -Wall
