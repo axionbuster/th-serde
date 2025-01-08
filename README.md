@@ -1,4 +1,4 @@
-# macserde2
+# th-serde
 
 A lightweight Haskell library for separating data structure definitions from their serialization and validation logic using Template Haskell and QuasiQuotes.
 
@@ -12,7 +12,7 @@ When working with data types that need validation or custom serialization, you o
 
 ## Solution
 
-macserde2 provides a QuasiQuoter that lets you define your data types with a clean syntax while automatically generating shadow types that handle validation and serialization. For example:
+th-serde provides a QuasiQuoter that lets you define your data types with a clean syntax while automatically generating shadow types that handle validation and serialization. For example:
 
 ```haskell
 [serde|
@@ -85,7 +85,7 @@ Add to your project's dependencies:
 
 ```yaml
 dependencies:
-  - macserde2
+  - th-serde
 ```
 
 ## Usage

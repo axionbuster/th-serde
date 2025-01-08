@@ -1,4 +1,4 @@
--- | quasi-quotation for serde
+-- | quasi-quotation for th-serde
 --
 -- a lightweight syntax for defining data types, newtypes, and type aliases
 -- for serialization and validation
@@ -90,7 +90,7 @@ module Data.Serde.QQ (serde, RunUserCoercion (..), runusercoercion) where
 import Data.Serde.TH
 import Language.Haskell.TH.Quote as TH
 
--- | quasi-quoter for serde
+-- | quasi-quoter for th-serde
 serde :: QuasiQuoter
 serde =
   QuasiQuoter
