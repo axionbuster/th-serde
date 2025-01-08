@@ -37,15 +37,22 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      AllowAmbiguousTypes
       BlockArguments
-      ViewPatterns
-      LambdaCase
-      TemplateHaskell
-      QuasiQuotes
       DataKinds
+      DefaultSignatures
+      DeriveAnyClass
+      DerivingStrategies
+      LambdaCase
+      QuasiQuotes
+      RecordWildCards
+      TemplateHaskell
+      UndecidableInstances
+      ViewPatterns
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base
+    , containers
     , haskell-src-exts
     , haskell-src-exts-simple
     , haskell-src-meta
@@ -60,21 +67,29 @@ test-suite macserde2-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      TestTrait
       Paths_macserde2
   autogen-modules:
       Paths_macserde2
   hs-source-dirs:
       test
   default-extensions:
+      AllowAmbiguousTypes
       BlockArguments
-      ViewPatterns
-      LambdaCase
-      TemplateHaskell
-      QuasiQuotes
       DataKinds
+      DefaultSignatures
+      DeriveAnyClass
+      DerivingStrategies
+      LambdaCase
+      QuasiQuotes
+      RecordWildCards
+      TemplateHaskell
+      UndecidableInstances
+      ViewPatterns
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base
+    , containers
     , haskell-src-exts
     , haskell-src-exts-simple
     , haskell-src-meta

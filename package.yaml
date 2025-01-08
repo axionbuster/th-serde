@@ -22,23 +22,30 @@ description:         Please see the README on GitHub at <https://github.com/gith
 language: GHC2021
 
 default-extensions:
+- AllowAmbiguousTypes
 - BlockArguments
-- ViewPatterns
-- LambdaCase
-- TemplateHaskell
-- QuasiQuotes
 - DataKinds
+- DefaultSignatures
+- DeriveAnyClass
+- DerivingStrategies
+- LambdaCase
+- QuasiQuotes
+- RecordWildCards
+- TemplateHaskell
+- UndecidableInstances
+- ViewPatterns
 
 dependencies:
 - base
-- template-haskell
-- transformers
+- containers
 - haskell-src-exts
 - haskell-src-exts-simple
 - haskell-src-meta
 - megaparsec
-- pretty-show
 - parser-combinators
+- pretty-show
+- template-haskell
+- transformers
 
 ghc-options:
 - -Wall

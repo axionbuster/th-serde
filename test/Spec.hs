@@ -5,14 +5,15 @@ import Data.Data
 import Data.Int
 import GHC.Generics
 import GHC.TypeLits
+import TestTrait
 
 newtype VerifyLength (min :: Nat) (max :: Nat) a
   = VerifyLength a
-  deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
+  deriving stock (Eq, Ord, Show, Read, Generic, Typeable, Data)
 
 newtype VerifyEmail a
   = VerifyEmail a
-  deriving (Eq, Ord, Show, Read, Generic, Typeable, Data)
+  deriving stock (Eq, Ord, Show, Read, Generic, Typeable, Data)
 
 [serde|
 .derive
@@ -37,5 +38,11 @@ data Noshadow
   anotherfield :: String
 |]
 
+runusercoercion derivetesttrait [''TestTrait]
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = do
+  -- suppose we get this from an external source
+  let person1 = Person {age = 10, name = "John", email = "a@a.com"}
+  -- let's see...
+  print $ testtrait person1

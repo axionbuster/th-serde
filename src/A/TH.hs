@@ -1,9 +1,18 @@
 -- | template Haskell generator
-module A.TH (gendecs) where
+module A.TH
+  ( runqq1,
+    runusercoercion,
+    RunUserCoercion (..),
+  )
+where
 
 import A.Syn
 import A.Type
+import Data.Coerce
+import Data.Foldable
 import Data.Maybe
+import Data.Traversable
+import Language.Haskell.TH.Lib as TH
 import Language.Haskell.TH.Syntax as TH
 
 bang0 :: Bang
@@ -32,7 +41,7 @@ genshafld SynFld {synfnam, synftyp, synfvia} =
         | otherwise = toth synftyp
    in (n, bang0, t)
 
--- | generate regular data
+-- generate regular data
 gendat :: Syn -> Dec
 gendat SynData {synnam, synflds, synders} =
   let n = cvtnam synnam
@@ -55,7 +64,10 @@ gennew :: Syn -> Dec
 gennew SynNewtype {synnam, synfld, synders} =
   let n = cvtnam synnam
       der Nothing = DerivClause Nothing [ConT $ cvtnam c | c <- synders]
-      der (Just t) = DerivClause (Just (ViaStrategy t)) [ConT $ cvtnam c | c <- synders]
+      der (Just t) =
+        DerivClause
+          (Just (ViaStrategy t))
+          [ConT $ cvtnam c | c <- synders]
       mk a v = NewtypeD [] n [] Nothing a [der v]
    in case synfld of
         Left (Plain t) -> mk (NormalC n [(bang0, ConT (mkName t))]) Nothing
@@ -77,7 +89,7 @@ shadowing :: Syn -> Bool
 shadowing SynData {synflds} = any (isJust . synfvia) synflds
 shadowing _ = False
 
--- | generate declarations for a 'Syn' object (e.g., data, newtype, alias)
+-- generate declarations for a 'Syn' object (e.g., data, newtype, alias)
 gendecs :: Syn -> [Dec]
 gendecs s@SynData {} = gendat s : sha
   where
@@ -86,3 +98,98 @@ gendecs s@SynData {} = gendat s : sha
       | otherwise = []
 gendecs s@SynNewtype {} = [gennew s]
 gendecs s@SynAlias {} = [genalias s]
+
+-- generate a pattern to deconstruct a normal constructor
+genfuncctor :: Syn -> Q Pat
+genfuncctor SynData {synnam, synflds} =
+  let n = cvtnam synnam
+   in conP n (map (varP . cvtnam . synfnam) synflds)
+genfuncctor _ = fail "genfuncctor: not a data type"
+
+-- generate a pattern to deconstruct a shadow constructor
+--
+-- fields will have a shadow suffix
+genfuncctorsha :: Syn -> Q Pat
+genfuncctorsha SynData {synnam, synflds} =
+  let n = shadownam $ cvtnam synnam
+   in conP n (map (varP . shadownam . cvtnam . synfnam) synflds)
+genfuncctorsha _ = fail "genfuncctorsha: not a data type"
+
+-- apply shadow fields to a normal constructor
+genapp :: Syn -> Q Exp
+genapp SynData {synnam, synflds} =
+  let n = cvtnam synnam
+      v = (map (varE . shadownam . cvtnam . synfnam) synflds)
+   in foldl' appE (conE n) [appE (varE 'coerce) v' | v' <- v]
+genapp _ = fail "genapp: not a data type"
+
+-- apply normal fields to a shadow constructor
+genappsha :: Syn -> Q Exp
+genappsha SynData {synnam, synflds} =
+  let n = shadownam $ cvtnam synnam
+      v = (map (varE . cvtnam . synfnam) synflds)
+   in foldl' appE (conE n) [appE (varE 'coerce) v' | v' <- v]
+genappsha _ = fail "genappsha: not a data type"
+
+-- | run quasi-quote body, and replace Q state (to get the
+-- shadowable data types)
+runqq1 :: String -> Q [Dec]
+runqq1 s = case parse s of
+  Left e -> fail e
+  Right p -> do
+    putQ (filter shadowing (declarations p))
+    pure (concat [gendecs t | t <- declarations p])
+
+-- | arguments to user code that generates coercions
+data RunUserCoercion = RunUserCoercion
+  { -- | regular (non-record syntax) pattern for deconstruction (normal)
+    patnormal :: Q Pat,
+    -- | regular (non-record syntax) pattern for deconstruction (shadow)
+    patshadow :: Q Pat,
+    -- | apply shadow fields to a normal constructor
+    appnormal :: Q Exp,
+    -- | apply normal fields to a shadow constructor
+    appshadow :: Q Exp,
+    -- | name of class to derive
+    classnam :: Q TH.Type
+  }
+
+-- | using the stored state (from last quasi-quote run), run user code
+-- to generate coercions
+runusercoercion ::
+  -- | user code to generate coercions
+  (RunUserCoercion -> Q [Dec]) ->
+  -- | coercions (names of classes to derive)
+  [TH.Name] ->
+  -- | generated coercions
+  Q [Dec]
+runusercoercion f (fmap ConT -> coers) = do
+  let (++++) = liftA2 (++)
+  -- get all the shadowable data types
+  ss <-
+    getQ >>= \case
+      Just t -> pure t
+      Nothing -> fail "runusercoercion: run serde quasi-quote first"
+  -- standaloneDerivD is used to generate standalone deriving instances
+  -- for the shadow types
+  let toderive =
+        [ (conT . shadownam . cvtnam . synnam $ s, c)
+        | s <- ss,
+          c <- coers
+        ]
+      derives = for toderive \(s, c) ->
+        standaloneDerivD (pure []) (appT (pure c) s)
+  -- shadow type derivations go first, and then coersive derivations
+  -- for the main types follow
+  derives
+    ++++ mconcat
+      [ f
+          RunUserCoercion
+            { patnormal = genfuncctor s,
+              patshadow = genfuncctorsha s,
+              appnormal = genapp s,
+              appshadow = genappsha s,
+              classnam = conT . cvtnam . synnam $ s
+            }
+      | s <- ss
+      ]
