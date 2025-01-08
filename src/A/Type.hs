@@ -4,7 +4,6 @@ module A.Type (ToTH (..), cvtnam, cvtder) where
 
 import A.ISyn (Derive (..))
 import Data.List (foldl')
-import Data.Maybe (fromMaybe)
 import Language.Haskell.Exts.Simple.Pretty as Exts
 import Language.Haskell.Exts.Simple.Syntax as Exts
 import Language.Haskell.TH as TH

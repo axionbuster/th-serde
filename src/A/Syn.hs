@@ -106,6 +106,7 @@ module A.Syn
   ( -- * parsing
     Parsed (..),
     parse,
+    parsetypeexts,
 
     -- * syntax
     Syn (..),
@@ -169,6 +170,14 @@ pm1 =
         ]
     }
 
+-- | go from type string to 'Exts'.'Type'
+--
+-- you need to use a function from "A.Type" to convert this to a TH.'TH.Type'
+parsetypeexts :: String -> Type
+parsetypeexts s = case parseTypeWithMode pm1 s of
+  ParseOk x -> x
+  ParseFailed _ e -> error $ "parsetypeexts: " ++ show e
+
 -- | convert intermediate syntax to syntax
 fromisyn :: Derive -> ISyn -> Syn
 fromisyn der0 = do
@@ -181,18 +190,15 @@ fromisyn der0 = do
       Left _ -> SynNewtype (name n) (Left v) der
       Right (s, u) ->
         SynNewtype (name n) (Right (SynFld (name n) s (Just u))) der
-    ISynAlias n d -> SynAlias (name n) (parsetype d)
+    ISynAlias n d -> SynAlias (name n) (parsetypeexts d)
   where
     name = Ident
-    parsetype t = case parseTypeWithMode pm1 t of
-      ParseOk x -> x
-      ParseFailed _ e -> error $ "parsetype: " ++ show e
     fromderive = fmap name . getderive
     fromisynfld (ISynFld n t) = case fromviainfo t of
       Left v -> SynFld (name n) v Nothing
       Right (s, u) -> SynFld (name n) s (Just u)
-    fromviainfo (Plain t) = Left (parsetype t)
-    fromviainfo (WithVia t s) = Right (parsetype t, parsetype s)
+    fromviainfo (Plain t) = Left (parsetypeexts t)
+    fromviainfo (WithVia t s) = Right (parsetypeexts t, parsetypeexts s)
 
 -- | parse quasi-quoted syntax
 parse :: String -> Either String Parsed
