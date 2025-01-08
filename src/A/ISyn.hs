@@ -9,8 +9,6 @@ module A.ISyn
     ISynFld (..),
     INewtypePayload (..),
     ViaInfo (..),
-    CoercePair (..),
-    CoerceHeader (..),
     Derive (..),
     Parser,
 
@@ -56,18 +54,8 @@ data ISynFld = ISynFld
   deriving (Show)
 
 -- | represents a coercion definition from the header,
--- containing the type class name and function to use
-data CoercePair = CoercePair
-  { cpclass :: String,
-    cpfun :: String
-  }
-  deriving (Show)
-
--- | collection of coercion definitions from the header section
-newtype CoerceHeader = CoerceHeader
-  { getcoerceheader :: [CoercePair]
-  }
-  deriving (Show)
+-- containing the function names to use
+type Coerce = [String]
 
 -- | collection of type classes to derive for all defined types
 newtype Derive = Derive
@@ -144,15 +132,14 @@ parsedata = do
 parsenewtype :: Parser ISyn
 parsenewtype = M.try parsenewtype1 <|> parsenewtype2
   where
-    guardf [] m = fail $ "parsenewtype: a newtype must have exactly one " ++ m
-    guardf [f] _ = pure f
-    guardf _ m = fail $ "parsenewtype: a newtype must have exactly one " ++ m
     parsenewtype1 = do
       (isnam, flds) <-
         indentblock
           (lexeme (M.string "newtype") *> lexeme identifier)
           parsefield
-      f <- guardf flds "field"
+      f <- case flds of
+        [g] -> pure g
+        _ -> fail "parsenewtype: a newtype must have exactly one field"
       pure ISynNewtype {isnam, isfld1 = IField f}
     parsenewtype2 = do
       void $ lexeme (M.string "newtype")
@@ -167,15 +154,13 @@ parsealias = do
   isdest <- lexeme (untileol M.anySingle)
   pure ISynAlias {isnam, isdest}
 
-parsecoerce :: Parser CoerceHeader
+parsecoerce :: Parser Coerce
 parsecoerce = do
-  (_, !pairs) <-
+  (_, !funs) <-
     indentblock
       (lexeme (M.string ".coerce"))
       (many (lexeme identifier))
-  pure $
-    CoerceHeader
-      [CoercePair (unwords $ init ws) (last ws) | ws <- pairs]
+  pure $ join funs
 
 parsederive :: Parser Derive
 parsederive = do
@@ -185,7 +170,7 @@ parsederive = do
       (many (lexeme identifier))
   pure $ Derive (join classes)
 
-parseheader :: Parser (CoerceHeader, Derive)
+parseheader :: Parser (Coerce, Derive)
 parseheader = (,) <$> parsecoerce <*> parsederive
 
 parsesyn :: Parser ISyn
@@ -197,7 +182,7 @@ parsesyn =
         M.try parsealias
       ]
 
-parsetop :: Parser ((CoerceHeader, Derive), [ISyn])
+parsetop :: Parser ((Coerce, Derive), [ISyn])
 parsetop = do
   h <- parseheader
   decls <- parsesyn `M.sepEndBy1` M.space
@@ -209,8 +194,8 @@ _testbody1 :: String
 _testbody1 =
   unlines
     [ ".coerce",
-      "  Pack mkpackdecls",
-      "  Unpack mkunpackdecls",
+      "  mkpackdecls",
+      "  mkunpackdecls",
       "",
       ".derive",
       "  Eq Ord Show Read",

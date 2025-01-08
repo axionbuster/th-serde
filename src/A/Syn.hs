@@ -77,8 +77,8 @@
 --
 -- @
 -- .coerce
---  Pack mkpackdecls
---  Unpack mkunpackdecls
+--  mkpackdecls
+--  mkunpackdecls
 --
 -- .derive
 --  Eq Ord Show Read
@@ -112,8 +112,6 @@ module A.Syn
     Syn (..),
     SynFld (..),
     ViaInfo (..),
-    CoerceHeader (..),
-    CoercePair (..),
 
     -- * re-export
     Name,
@@ -130,7 +128,7 @@ import Text.Megaparsec qualified as M
 -- | parsed data
 data Parsed = Parsed
   { declarations :: [Syn],
-    coersions :: CoerceHeader,
+    coersions :: [Name],
     derives :: Derive
   }
   deriving (Show)
@@ -206,5 +204,5 @@ parse s =
   let res = M.runParser (parsetop <* M.eof) "" s
    in case res of
         Right ((co, de), fmap (fromisyn de) -> ds) ->
-          Right $ Parsed ds co de
+          Right $ Parsed ds (map Ident co) de
         Left e -> Left $ M.errorBundlePretty e

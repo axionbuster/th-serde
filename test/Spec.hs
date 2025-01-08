@@ -16,8 +16,8 @@ newtype VerifyEmail a
 
 [serde|
 .coerce
-  Pack mkpackdecls
-  Unpack mkunpackdecls
+  mkpackdecls
+  mkunpackdecls
 
 .derive
   Eq Ord Show Read

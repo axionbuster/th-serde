@@ -75,12 +75,14 @@ genalias _ = error "genalias: not an alias"
 -- has a shadowing field?
 shadowing :: Syn -> Bool
 shadowing SynData {synflds} = any (isJust . synfvia) synflds
+shadowing _ = False
 
 -- | generate declarations for a 'Syn' object (e.g., data, newtype, alias)
 gendecs :: Syn -> [Dec]
 gendecs s@SynData {} = gendat s : sha
   where
-    sha | shadowing s = [genshadata s]
-        | otherwise = []
+    sha
+      | shadowing s = [genshadata s]
+      | otherwise = []
 gendecs s@SynNewtype {} = [gennew s]
 gendecs s@SynAlias {} = [genalias s]
