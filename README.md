@@ -72,7 +72,7 @@ runusercoercion derivetesttrait [''TestTrait]
 
 -- Implementation for derivetesttrait
 derivetesttrait :: RunUserCoercion -> Q [Dec]
-derivetesttrait RunUserCoercion {..} = do
+derivetesttrait RunUserCoercion {classnam, patnormal, appshadow} = do
   [d|
     instance TestTrait $(classnam) where
       testtrait $(patnormal) = testtrait ($(appshadow))
