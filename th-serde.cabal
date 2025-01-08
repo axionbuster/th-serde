@@ -5,7 +5,7 @@ cabal-version: 2.2
 -- see: https://github.com/sol/hpack
 
 name:           th-serde
-version:        0.1.0.0
+version:        0.1.1.0
 synopsis:       A serialization/deserialization framework for Haskell
 description:    A lightweight serialization/deserialization framework for Haskell that uses Template Haskell 
                 and QuasiQuotes to separate data structure definitions from their serialization and validation 

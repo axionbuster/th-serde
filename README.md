@@ -92,7 +92,12 @@ dependencies:
 
 1. Enable the necessary language extensions:
 ```haskell
+-- GHC2021+
 {-# LANGUAGE QuasiQuotes, TemplateHaskell #-}
+{-# LANGUAGE DataKinds, DerivingStrategies, DerivingVia #-}
+
+-- Haskell2010+
+-- may need to enable StandaloneDeriving and more
 ```
 
 2. Import the QuasiQuoter:
