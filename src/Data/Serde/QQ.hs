@@ -37,6 +37,7 @@
 --   name :: String via VerifyLength 1 10     -- Must be 1-10 chars
 --   email :: String via VerifyEmail          -- Must be valid email
 -- |]
+-- @
 --
 -- This generates:
 --
@@ -49,7 +50,7 @@
 --   } deriving (Eq, Ord, Show, Read)
 --
 -- -- Auto-generated shadow type for validation
--- data Person__ = Person__
+-- data Person\_\_ = Person\_\_
 --   { age__ :: Age               -- Fields use validation wrappers
 --   , name__ :: VerifyLength 1 10
 --   , email__ :: VerifyEmail
