@@ -2,9 +2,9 @@ name: Haddock
 
 on:
   push:
-    branches: [ main, mkdocs ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, mkdocs ]
+    branches: [ main ]
 
 jobs:
   build:
