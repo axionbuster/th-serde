@@ -127,6 +127,7 @@ dependencies:
 ## Usage
 
 1. Enable the necessary language extensions:
+
 ```haskell
 -- GHC2021+
 {-# LANGUAGE QuasiQuotes, TemplateHaskell #-}
@@ -137,6 +138,7 @@ dependencies:
 ```
 
 2. Import the QuasiQuoter:
+
 ```haskell
 import Data.Serde.QQ
 ```
