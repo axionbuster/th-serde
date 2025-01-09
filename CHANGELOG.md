@@ -8,6 +8,16 @@ and this project adheres to the
 
 ## Unreleased
 
+## 0.1.2.0 - 2025-01-09
+
+- Properly implemented derive mechanism
+- Changed usage pattern: user must
+  1. Use `[serde| ... |]`
+  2. Call Template Haskell function `runuserprep` (__NEW__)
+  3. Call Template Haskell function `runusercoercion`
+- `runuserprep` implements derives for all types except type aliases.
+  "all types" includes both data types and their shadows
+
 ## 0.1.1.0 - 2025-01-09
 
 - Reorganized modules to better indicate internal vs stable APIs
