@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 0.1.2.1 - 2025-01-09
+
+- Minor/internal changes (documentation, etc.)
+
 ## 0.1.2.0 - 2025-01-09
 
 - Properly implemented derive mechanism
