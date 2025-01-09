@@ -6,7 +6,7 @@
 -- a lightweight syntax for defining data types, newtypes, and type aliases
 -- for serialization and validation
 --
--- __ synopsys __
+-- ** synopsys
 --
 -- we want to separate how to serialize and validate data from the data itself
 --
@@ -32,7 +32,7 @@
 -- ultimately, the user is responsible for going the last mile, but
 -- this module provides a lot of the boilerplate
 --
--- __ example __
+-- ** example
 --
 -- @
 -- data Person
@@ -72,23 +72,27 @@
 -- as one can see, the newtypes that define _how_ to serialize and validate
 -- the data are separated from the data itself
 --
--- __ header __
+-- ** header
 --
 -- @
 -- .derive
---  Eq Ord Show Read
---  Generic Typeable Data
+--  Eq Ord Read -- line breaks don't matter
+--  Typeable Data
 -- @
 --
--- __ @.derive@ __
+-- *** @.derive@
 --
--- @.derive@ defines which type classes to derive for all types defined in
--- the module
+-- @.derive@ defines which type classes to derive for all visible types
 --
--- they are not given in the shadow type, but in the data type
---
--- shadow types only implement: 'Generic', 'Typeable', and 'Data'
-module Data.Serde.QQ (serde, RunUserCoercion (..), runusercoercion) where
+-- shadow types do not implement these. the user must implement these
+-- in 'runuserprep'
+module Data.Serde.QQ
+  ( serde,
+    RunUserCoercion (..),
+    runusercoercion,
+    runuserprep,
+  )
+where
 
 import Data.Serde.Internal.TH
 import Language.Haskell.TH.Quote as TH

@@ -1,8 +1,8 @@
 module Main (main) where
 
-import Data.Serde.QQ
 import Data.Data
 import Data.Int
+import Data.Serde.QQ
 import GHC.Generics
 import GHC.TypeLits
 import TestTrait
@@ -17,8 +17,8 @@ newtype VerifyEmail a
 
 [serde|
 .derive
-  Eq Ord Show Read
-  Generic Typeable Data
+  -- Show and Generic are derived by preptype after this qq is run
+  Eq Ord Read Typeable Data
 
 data Person
   age :: Int32 via Age
@@ -37,6 +37,8 @@ data Noshadow
   noshadow :: Int32
   anotherfield :: String
 |]
+
+runuserprep preptype
 
 runusercoercion derivetesttrait [''TestTrait]
 

@@ -1,7 +1,7 @@
-module TestTrait (TestTrait (..), derivetesttrait) where
+module TestTrait (TestTrait (..), derivetesttrait, preptype) where
 
-import Data.Serde.QQ
 import Data.Int
+import Data.Serde.QQ
 import Data.Set (Set, singleton)
 import GHC.Generics
 import Language.Haskell.TH as TH
@@ -36,9 +36,17 @@ instance (GTestTrait a, GTestTrait b) => GTestTrait (a :+: b) where
 instance (GTestTrait a, GTestTrait b) => GTestTrait (a :*: b) where
   gtesttrait (x :*: y) = gtesttrait x <> gtesttrait y
 
+preptype :: Q TH.Type -> Q [Dec]
+preptype t = do
+  [d|
+    deriving instance Show $t
+
+    deriving instance Generic $t
+    |]
+
 derivetesttrait :: RunUserCoercion -> Q [Dec]
 derivetesttrait RunUserCoercion {..} = do
   [d|
-    instance TestTrait $(classnam) where
+    instance TestTrait $(datatyp) where
       testtrait $(patnormal) = testtrait ($(appshadow))
     |]

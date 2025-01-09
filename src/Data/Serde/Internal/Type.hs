@@ -2,8 +2,8 @@
 -- 'Language.Haskell.Syntax.Type'
 module Data.Serde.Internal.Type (ToTH (..), cvtnam, cvtder) where
 
-import Data.Serde.Internal.ISyn (Derive (..))
 import Data.List (foldl')
+import Data.Serde.Internal.ISyn (Derive (..))
 import Language.Haskell.Exts.Simple.Pretty as Exts
 import Language.Haskell.Exts.Simple.Syntax as Exts
 import Language.Haskell.TH as TH

@@ -83,7 +83,7 @@ identifier = (:) <$> headchar <*> M.many bodychar
     bodychar = M.alphaNumChar <|> M.char '_' <|> M.char '\''
 
 typechars :: Parser Char
-typechars = M.alphaNumChar <|> M.oneOf "_'() ,:[]=.<>-|"
+typechars = M.alphaNumChar <|> M.oneOf "_'() ,:[]=.<>-|\""
 
 untileol :: Parser Char -> Parser String
 untileol p = M.try $ M.manyTill p (M.lookAhead (M.eof <|> void M.eol))

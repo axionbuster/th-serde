@@ -70,13 +70,49 @@ class TestTrait a where
 -- Generate instances for your types
 runusercoercion derivetesttrait [''TestTrait]
 
--- Implementation for derivetesttrait
-derivetesttrait :: RunUserCoercion -> Q [Dec]
-derivetesttrait RunUserCoercion {classnam, patnormal, appshadow} = do
+-- Make two implementations:
+-- input to runuserprep (here, preptype):
+-- for all data types, including their shadow counterparts and newtypes
+-- but not type aliases
+--
+-- input to runusercoercion (here, derivetesttrait):
+-- for the shadow counterparts of data types; not newtypes, type aliases
+-- or data types with no 'via' fields
+
+preptype :: Q TH.Type -> Q [Dec] -- for all types
+preptype t = do
   [d|
-    instance TestTrait $(classnam) where
+    deriving instance Show $t
+
+    deriving instance Generic $t
+    |]
+
+derivetesttrait :: RunUserCoercion -> Q [Dec] -- only for shadow data
+derivetesttrait RunUserCoercion {..} = do
+  -- borrow implementation from shadow type
+  --
+  -- datatyp: data type name
+  -- patnormal: deconstructs user data
+  -- appshadow: constructs shadow data
+  --
+  -- flow:
+  --  patnormal ->
+  --    appshadow [create shadow data] ->
+  --      (class method) (borrow implementation from shadow)
+  [d|
+    instance TestTrait $(datatyp) where
       testtrait $(patnormal) = testtrait ($(appshadow))
     |]
+
+  -- of course, opposite flow is possible as well
+  --
+  -- see patshadow and appshadow (Data.Serde.Internal.TH)
+  -- (reexported by Data.Serde.QQ)
+  --
+  -- suggested flow:
+  --  (class method) ->
+  --    patshadow [create shadow data] ->
+  --      appnormal (reconstruct real data)
 ```
 
 ## Installation

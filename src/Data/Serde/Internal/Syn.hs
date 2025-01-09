@@ -57,6 +57,8 @@ data SynFld = SynFld
   }
   deriving (Show)
 
+-- we use a parser that's independent of GHC's parser
+-- so we declare our own extensions
 pm1 :: ParseMode
 pm1 =
   defaultParseMode
