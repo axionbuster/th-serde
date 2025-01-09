@@ -30,12 +30,24 @@ jobs:
 
     - name: Build Documentation
       run: |
-        stack build --haddock --no-haddock-deps
-        DOC_ROOT=$(stack path --local-doc-root)
-        echo "Documentation root: $DOC_ROOT"
-        ls -la $DOC_ROOT
+        stack build --fast --haddock --no-haddock-deps
+        
+        # Find documentation directory
+        DIST_DOC=$(find .stack-work/dist -type d -name "html" -print -quit)
+        echo "Distribution docs found at: $DIST_DOC"
+        
+        # Ensure docs exist
+        if [ ! -d "$DIST_DOC/th-serde" ]; then
+          echo "Error: Documentation not found at $DIST_DOC/th-serde"
+          exit 1
+        fi
+        
+        # Copy docs
         mkdir -p public
-        cp -rv $DOC_ROOT/* public/
+        cp -rv "$DIST_DOC/th-serde"/* public/
+        
+        # Verify copy
+        ls -la public/
 
     - name: Deploy to GitHub Pages
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
