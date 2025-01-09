@@ -45,7 +45,7 @@ data Person__ = Person__
   { age__ :: Age
   , name__ :: VerifyLength 1 10 String
   , email__ :: VerifyEmail String
-  } deriving (Generic, Typeable, Data)
+  }
 ```
 
 ## Features
