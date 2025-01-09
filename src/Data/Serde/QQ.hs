@@ -83,19 +83,34 @@
 --
 -- == Newtypes
 --
+-- Unlike data types, newtypes using 'via' (either in field or type position)
+-- will use GHC's @DerivingVia@ mechanism directly instead of creating shadow types.
+-- This requires the @DerivingVia@ language extension to be enabled.
+--
 -- @
--- newtype Age        -- Simple newtype
---   value :: Int32   -- Single field
+-- newtype Age        -- Simple newtype without via
+--   value :: Int32   -- Regular field, no shadow type created
+--
+-- newtype Number Double
 --
 -- newtype Validated Int32 via Check  -- With validation
--- -- ^ Corresponds to:
--- --   newtype Validated = Int32 deriving (...) via Check
+-- -- ^ Generates:
+-- --   newtype Validated = Validated Int32
+-- --     deriving (...) via Check
+--
+-- newtype Name       -- With record syntax + via
+--   getName :: String via Verify
+-- -- ^ Generates:
+-- --   newtype Name = Name { getName :: String }
+-- --     deriving (...) via Verify
 -- @
 --
 -- == Type Aliases
 --
+-- Type aliases do not participate in the derivation process and are not shadowed.
+--
 -- @
--- type EmailStr = String via VerifyEmail
+-- type EmailStr String
 -- @
 --
 -- == Examples
