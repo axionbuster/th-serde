@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 0.1.2.2 - 2025-01-10
+
+- Hotfix for a bug affecting parsing of 'via'
+
 ## 0.1.2.1 - 2025-01-09
 
 - Minor/internal changes (documentation, etc.)

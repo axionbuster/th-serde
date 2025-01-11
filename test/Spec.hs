@@ -15,6 +15,9 @@ newtype VerifyEmail a
   = VerifyEmail a
   deriving stock (Eq, Ord, Show, Read, Generic, Typeable, Data)
 
+newtype A b = A b
+  deriving stock (Eq, Ord, Show, Read, Generic, Typeable, Data)
+
 [serde|
 .derive
   -- Show and Generic are derived by preptype after this qq is run
@@ -24,6 +27,7 @@ data Person
   age :: Int32 via Age
   name :: String via VerifyLength 1 10 String
   email :: String via VerifyEmail String
+  mya :: A Int32 via Int32
 
 newtype Age
   getage :: Int32
@@ -45,6 +49,6 @@ runusercoercion derivetesttrait [''TestTrait]
 main :: IO ()
 main = do
   -- suppose we get this from an external source
-  let person1 = Person {age = 10, name = "John", email = "a@a.com"}
+  let person1 = Person {age = 10, name = "John", email = "a@a.com", mya = A 11}
   -- let's see...
   print $ testtrait person1

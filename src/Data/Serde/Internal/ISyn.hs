@@ -91,8 +91,9 @@ untileol p = M.try $ M.manyTill p (M.lookAhead (M.eof <|> void M.eol))
 untilvia :: Parser String
 untilvia =
   M.try $
-    M.manyTill typechars $
-      M.lookAhead (void M.eol <|> void (M.space1 *> M.string "via"))
+    fmap (reverse . dropWhile (== ' ') . reverse) $
+      M.manyTill typechars $
+        M.lookAhead (void M.eol <|> void (M.string "via") <|> M.eof)
 
 -- Main parsers
 parsetype :: Parser ViaInfo
