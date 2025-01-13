@@ -1,4 +1,4 @@
-module TestTrait (TestTrait (..), derivetesttrait, preptype) where
+module TestTrait (TestTrait (..), derivetesttrait, derivetesttraitreg) where
 
 import Data.Int
 import Data.Serde.QQ
@@ -36,17 +36,15 @@ instance (GTestTrait a, GTestTrait b) => GTestTrait (a :+: b) where
 instance (GTestTrait a, GTestTrait b) => GTestTrait (a :*: b) where
   gtesttrait (x :*: y) = gtesttrait x <> gtesttrait y
 
-preptype :: Q TH.Type -> Q [Dec]
-preptype t = do
-  [d|
-    deriving instance Show $t
-
-    deriving instance Generic $t
-    |]
-
 derivetesttrait :: RunUserCoercion -> Q [Dec]
 derivetesttrait RunUserCoercion {..} = do
   [d|
     instance TestTrait $(datatyp) where
       testtrait $(patnormal) = testtrait ($(appshadow))
+    |]
+
+derivetesttraitreg :: Name -> Q [Dec]
+derivetesttraitreg n = do
+  [d|
+    instance TestTrait $(conT n)
     |]

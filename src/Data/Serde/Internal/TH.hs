@@ -1,7 +1,6 @@
 -- | template Haskell generator
 module Data.Serde.Internal.TH
   ( runqq1,
-    runuserprep,
     runusercoercion,
     RunUserCoercion (..),
   )
@@ -10,6 +9,7 @@ where
 import Data.Coerce
 import Data.Data
 import Data.Foldable
+import Data.List (partition)
 import Data.Maybe
 import Data.Serde.Internal.Syn
 import Data.Serde.Internal.Type
@@ -162,57 +162,43 @@ data RunUserCoercion = RunUserCoercion
     shadowdatatyp :: Q TH.Type
   }
 
--- | let user derive classes for all data types, shadowed and not
-runuserprep ::
-  -- | inputs will include data types, their shadowed counterparts (if any),
-  -- and newtypes, but not aliases
-  (Q TH.Type -> Q [Dec]) ->
-  Q [Dec]
-runuserprep f = do
-  QQState ss <-
-    getQ >>= \case
-      Just t -> pure t
-      Nothing -> fail "runuserprep: run serde quasi-quote first"
-  mconcat <$> for ss \s ->
-    let ns = case s of
-          SynData {synnam}
-            | shadowing s ->
-                let n = cvtnam synnam
-                 in [shadownam n, n]
-          SynData {synnam} -> pure $ cvtnam synnam
-          SynNewtype {synnam} -> pure $ cvtnam synnam
-          SynAlias {} -> []
-     in mconcat <$> for ns (f . conT)
-
 -- | using the stored state (from last quasi-quote run), run user code
 -- to generate coercions
 runusercoercion ::
-  -- | inputs will be shadowable data types, but not the shadows
-  -- (so there are no underscores, and they are all data, not newtypes)
+  -- | generate coercions between shadow and regular data types
   (RunUserCoercion -> Q [Dec]) ->
-  -- | coercions (names of classes to derive)
+  -- | derive coercions for shadow data, regular data with no shadows,
+  -- and newtypes
+  (TH.Name -> Q [Dec]) ->
+  -- | preparations for shadow types
   [TH.Name] ->
   -- | generated coercions
   Q [Dec]
-runusercoercion f (fmap ConT -> coers) = do
+runusercoercion f g (fmap ConT -> preps) = do
   let (++++) = liftA2 (++)
-  -- get all the shadowable data types
-  ss <-
+  -- get all the shadowable data types and the regular data types
+  let isnotalias SynAlias {} = False
+      isnotalias _ = True
+  (ss, ns) <-
     getQ >>= \case
-      Just t -> pure $ filter shadowing (qqstate t)
+      Just t -> pure $ partition shadowing $ filter isnotalias $ qqstate t
       Nothing -> fail "runusercoercion: run serde quasi-quote first"
   -- standaloneDerivD is used to generate standalone deriving instances
   -- for the shadow types
   let toderive =
-        [ (conT . shadownam . cvtnam . synnam $ s, c)
-        | s <- ss,
-          c <- coers
-        ]
+        concat
+          [ [ (conT . shadownam . cvtnam . synnam $ s, c),
+              (conT . cvtnam . synnam $ s, c)
+            ]
+          | s <- ss,
+            c <- preps
+          ]
+          ++ [(conT . cvtnam . synnam $ n, c) | n <- ns, c <- preps]
       derives = for toderive \(s, c) ->
         standaloneDerivD (pure []) (appT (pure c) s)
-  -- shadow type derivations go first, and then coersive derivations
-  -- for the main types follow
   derives
+    ++++ mconcat [g (shadownam . cvtnam . synnam $ s) | s <- ss]
+    ++++ mconcat [g (cvtnam . synnam $ n) | n <- ns]
     ++++ mconcat
       [ f
           RunUserCoercion

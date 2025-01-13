@@ -8,6 +8,14 @@ and this project adheres to the
 
 ## Unreleased
 
+## 0.1.3.0 - 2025-01-11
+
+- Changed signature of `runusercoercion` in internal TH module
+- The function now takes three parameters:
+  1. Function to generate coercions between shadow/regular data types
+  2. Function to derive coercions for shadow data, regular data with no shadows, and newtypes
+  3. List of type class names to prepare
+
 ## 0.1.2.2 - 2025-01-10
 
 - Hotfix for a bug affecting parsing of 'via'

@@ -60,8 +60,7 @@
 -- = Usage Pattern
 --
 -- 1. Define your types using the 'serde' QuasiQuoter
--- 2. Call 'runuserprep' to implement basic type classes
--- 3. Call 'runusercoercion' to implement validation/serialization
+-- 2. Call 'runusercoercion' to implement validation/serialization
 --
 -- = Syntax Reference
 --
@@ -121,7 +120,6 @@ module Data.Serde.QQ
   ( serde,
     RunUserCoercion (..),
     runusercoercion,
-    runuserprep,
   )
 where
 

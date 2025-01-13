@@ -42,9 +42,7 @@ data Noshadow
   anotherfield :: String
 |]
 
-runuserprep preptype
-
-runusercoercion derivetesttrait [''TestTrait]
+runusercoercion derivetesttrait derivetesttraitreg [''Show, ''Generic]
 
 main :: IO ()
 main = do

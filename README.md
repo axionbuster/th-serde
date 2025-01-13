@@ -58,7 +58,7 @@ data Person__ = Person__
 
 ## Custom Type Class Derivation
 
-You can easily derive custom type classes that work with your shadow types. Here's an example:
+The library provides a flexible mechanism for deriving type classes. Here's an example:
 
 ```haskell
 -- Define a type class
@@ -67,30 +67,21 @@ class TestTrait a where
   default testtrait :: (Generic a, GTestTrait (Rep a)) => a -> Set String
   testtrait = gtesttrait . from
 
--- Generate instances for your types
-runusercoercion derivetesttrait [''TestTrait]
+-- 1. regular implementation (base case)
+-- 2. borrow implementation
 
--- Make two implementations:
--- input to runuserprep (here, preptype):
--- for all data types, including their shadow counterparts and newtypes
--- but not type aliases
---
--- input to runusercoercion (here, derivetesttrait):
--- for the shadow counterparts of data types; not newtypes, type aliases
--- or data types with no 'via' fields
-
-preptype :: Q TH.Type -> Q [Dec] -- for all types
-preptype t = do
+-- derive for newtypes and regular data types with no shadow counterpart
+-- and also for all shadow data types
+derivetesttraitreg :: Name -> Q [Dec]
+derivetesttraitreg n = do
   [d|
-    deriving instance Show $t
-
-    deriving instance Generic $t
+    instance TestTrait $(conT n)
     |]
 
-derivetesttrait :: RunUserCoercion -> Q [Dec] -- only for shadow data
-derivetesttrait RunUserCoercion {..} = do
+derivebycoercion :: RunUserCoercion -> Q [Dec]
+derivebycoercion RunUserCoercion {..} = do
   -- borrow implementation from shadow type
-  --
+  -- 
   -- datatyp: data type name
   -- patnormal: deconstructs user data
   -- appshadow: constructs shadow data
@@ -113,6 +104,27 @@ derivetesttrait RunUserCoercion {..} = do
   --  (class method) ->
   --    patshadow [create shadow data] ->
   --      appnormal (reconstruct real data)
+
+-- user code
+
+-- define types using serde
+[serde|
+.derive
+  -- Show and Generic are derived by preptype after this qq is run
+  Eq Ord Read Typeable Data
+
+data Person
+  age :: Int32 via Age
+  name :: String via VerifyLength 1 10 String
+  email :: String via VerifyEmail String
+  mya :: A Int32 via Int32
+
+newtype Age
+  getage :: Int32
+  |]
+
+-- do it
+runusercoercion derivetesttrait derivetesttraitreg [''Show, ''Generic]
 ```
 
 ## Installation
