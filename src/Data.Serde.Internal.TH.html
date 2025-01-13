@@ -1,0 +1,902 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">-- | template Haskell generator</span></span><span>
+</span><span id="line-2"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Serde.Internal.TH</span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Serde.Internal.TH.html#runqq1"><span class="hs-identifier">runqq1</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-4"></span><span>    </span><span class="annot"><a href="Data.Serde.Internal.TH.html#runusercoercion"><span class="hs-identifier">runusercoercion</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-5"></span><span>    </span><span class="annot"><a href="Data.Serde.Internal.TH.html#RunUserCoercion"><span class="hs-identifier">RunUserCoercion</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Coerce</span></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Data</span></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Foldable</span></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">partition</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html"><span class="hs-identifier">Data.Serde.Internal.Syn</span></a></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Type.html"><span class="hs-identifier">Data.Serde.Internal.Type</span></a></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Traversable</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Lib</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TH</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Syntax</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TH</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#bang0"><span class="hs-identifier hs-type">bang0</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bang</span></span><span>
+</span><span id="line-21"></span><span id="bang0"><span class="annot"><span class="annottext">bang0 :: Bang
+</span><a href="Data.Serde.Internal.TH.html#bang0"><span class="hs-identifier hs-var hs-var">bang0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SourceUnpackedness -&gt; SourceStrictness -&gt; Bang
+</span><span class="hs-identifier hs-var">Bang</span></span><span> </span><span class="annot"><span class="annottext">SourceUnpackedness
+</span><span class="hs-identifier hs-var">NoSourceUnpackedness</span></span><span> </span><span class="annot"><span class="annottext">SourceStrictness
+</span><span class="hs-identifier hs-var">NoSourceStrictness</span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- regular field type (ignore via)</span><span>
+</span><span id="line-24"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genfld"><span class="hs-identifier hs-type">genfld</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynFld"><span class="hs-identifier hs-type">SynFld</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">VarBangType</span></span><span>
+</span><span id="line-25"></span><span id="genfld"><span class="annot"><span class="annottext">genfld :: SynFld -&gt; VarBangType
+</span><a href="Data.Serde.Internal.TH.html#genfld"><span class="hs-identifier hs-var hs-var">genfld</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynFld"><span class="hs-identifier hs-type">SynFld</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679116942"><span class="annot"><span class="annottext">Name
+synfnam :: Name
+synfnam :: SynFld -&gt; Name
+</span><a href="#local-6989586621679116942"><span class="hs-identifier hs-var hs-var">synfnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116944"><span class="annot"><span class="annottext">Type
+synftyp :: Type
+synftyp :: SynFld -&gt; Type
+</span><a href="#local-6989586621679116944"><span class="hs-identifier hs-var hs-var">synftyp</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679116946"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679116946"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116942"><span class="hs-identifier hs-var">synfnam</span></a></span><span>
+</span><span id="line-27"></span><span>      </span><span id="local-6989586621679116949"><span class="annot"><span class="annottext">t :: Type
+</span><a href="#local-6989586621679116949"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Type -&gt; Type
+forall a. ToTH a =&gt; a -&gt; Type
+</span><a href="Data.Serde.Internal.Type.html#toth"><span class="hs-identifier hs-var">toth</span></a></span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116944"><span class="hs-identifier hs-var">synftyp</span></a></span><span>
+</span><span id="line-28"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116946"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bang
+</span><a href="Data.Serde.Internal.TH.html#bang0"><span class="hs-identifier hs-var">bang0</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116949"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- suffix with two underscores</span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#shadownamcore"><span class="hs-identifier hs-type">shadownamcore</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-32"></span><span id="shadownamcore"><span class="annot"><span class="annottext">shadownamcore :: String -&gt; String
+</span><a href="Data.Serde.Internal.TH.html#shadownamcore"><span class="hs-identifier hs-var hs-var">shadownamcore</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;__&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-type">shadownam</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TH.Name</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TH.Name</span></span><span>
+</span><span id="line-35"></span><span id="shadownam"><span class="annot"><span class="annottext">shadownam :: Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var hs-var">shadownam</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">TH.Name</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">OccName</span></span><span> </span><span id="local-6989586621679116955"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679116955"><span class="hs-identifier hs-var">o</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679116956"><span class="annot"><span class="annottext">NameFlavour
+</span><a href="#local-6989586621679116956"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">OccName -&gt; NameFlavour -&gt; Name
+</span><span class="hs-identifier hs-var">TH.Name</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; OccName
+</span><span class="hs-identifier hs-var">OccName</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="Data.Serde.Internal.TH.html#shadownamcore"><span class="hs-identifier hs-var">shadownamcore</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679116955"><span class="hs-identifier hs-var">o</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NameFlavour
+</span><a href="#local-6989586621679116956"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- shadow field type (ignore type, use via)</span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genshafld"><span class="hs-identifier hs-type">genshafld</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynFld"><span class="hs-identifier hs-type">SynFld</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">VarBangType</span></span><span>
+</span><span id="line-39"></span><span id="genshafld"><span class="annot"><span class="annottext">genshafld :: SynFld -&gt; VarBangType
+</span><a href="Data.Serde.Internal.TH.html#genshafld"><span class="hs-identifier hs-var hs-var">genshafld</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynFld"><span class="hs-identifier hs-type">SynFld</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679116958"><span class="annot"><span class="annottext">Name
+synfnam :: SynFld -&gt; Name
+synfnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synfnam"><span class="hs-identifier hs-var hs-var">synfnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116959"><span class="annot"><span class="annottext">Type
+synftyp :: SynFld -&gt; Type
+synftyp :: Type
+</span><a href="Data.Serde.Internal.Syn.html#synftyp"><span class="hs-identifier hs-var hs-var">synftyp</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116960"><span class="annot"><span class="annottext">Maybe Type
+synfvia :: Maybe Type
+synfvia :: SynFld -&gt; Maybe Type
+</span><a href="#local-6989586621679116960"><span class="hs-identifier hs-var hs-var">synfvia</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679116962"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679116962"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; Name -&gt; Name
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116958"><span class="hs-identifier hs-var">synfnam</span></a></span><span>
+</span><span id="line-41"></span><span>      </span><span id="local-6989586621679116965"><span class="annot"><span class="annottext">t :: Type
+</span><a href="#local-6989586621679116965"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span>
+</span><span id="line-42"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679116966"><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116966"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Maybe Type
+</span><a href="#local-6989586621679116960"><span class="hs-identifier hs-var">synfvia</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Type -&gt; Type
+forall a. ToTH a =&gt; a -&gt; Type
+</span><a href="Data.Serde.Internal.Type.html#toth"><span class="hs-identifier hs-var">toth</span></a></span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116966"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-43"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Type -&gt; Type
+forall a. ToTH a =&gt; a -&gt; Type
+</span><a href="Data.Serde.Internal.Type.html#toth"><span class="hs-identifier hs-var">toth</span></a></span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116959"><span class="hs-identifier hs-var">synftyp</span></a></span><span>
+</span><span id="line-44"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116962"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bang
+</span><a href="Data.Serde.Internal.TH.html#bang0"><span class="hs-identifier hs-var">bang0</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116965"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- generate regular data</span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gendat"><span class="hs-identifier hs-type">gendat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span>
+</span><span id="line-48"></span><span id="gendat"><span class="annot"><span class="annottext">gendat :: Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#gendat"><span class="hs-identifier hs-var hs-var">gendat</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679116969"><span class="annot"><span class="annottext">Name
+synnam :: Name
+synnam :: Syn -&gt; Name
+</span><a href="#local-6989586621679116969"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116971"><span class="annot"><span class="annottext">[SynFld]
+synflds :: [SynFld]
+synflds :: Syn -&gt; [SynFld]
+</span><a href="#local-6989586621679116971"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116973"><span class="annot"><span class="annottext">[Name]
+synders :: [Name]
+synders :: Syn -&gt; [Name]
+</span><a href="#local-6989586621679116973"><span class="hs-identifier hs-var hs-var">synders</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679116975"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679116975"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116969"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-50"></span><span>      </span><span id="local-6989586621679116976"><span class="annot"><span class="annottext">flds :: [VarBangType]
+</span><a href="#local-6989586621679116976"><span class="hs-identifier hs-var hs-var">flds</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SynFld -&gt; VarBangType) -&gt; [SynFld] -&gt; [VarBangType]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; VarBangType
+</span><a href="Data.Serde.Internal.TH.html#genfld"><span class="hs-identifier hs-var">genfld</span></a></span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679116971"><span class="hs-identifier hs-var">synflds</span></a></span><span>
+</span><span id="line-51"></span><span>      </span><span id="local-6989586621679116977"><span class="annot"><span class="annottext">der :: DerivClause
+</span><a href="#local-6989586621679116977"><span class="hs-identifier hs-var hs-var">der</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe DerivStrategy -&gt; Cxt -&gt; DerivClause
+</span><span class="hs-identifier hs-var">DerivClause</span></span><span> </span><span class="annot"><span class="annottext">Maybe DerivStrategy
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Type) -&gt; Name -&gt; Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116980"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679116980"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116980"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Name]
+</span><a href="#local-6989586621679116973"><span class="hs-identifier hs-var">synders</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-52"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Cxt
+-&gt; Name
+-&gt; [TyVarBndr BndrVis]
+-&gt; Maybe Type
+-&gt; [Con]
+-&gt; [DerivClause]
+-&gt; Dec
+</span><span class="hs-identifier hs-var">DataD</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116975"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Maybe Type
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; [VarBangType] -&gt; Con
+</span><span class="hs-identifier hs-var">RecC</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116975"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[VarBangType]
+</span><a href="#local-6989586621679116976"><span class="hs-identifier hs-var">flds</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">DerivClause
+</span><a href="#local-6989586621679116977"><span class="hs-identifier hs-var">der</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gendat"><span class="hs-identifier hs-var">gendat</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Dec
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gendat: not a data type&quot;</span></span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- generate shadow data</span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genshadata"><span class="hs-identifier hs-type">genshadata</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span>
+</span><span id="line-57"></span><span id="genshadata"><span class="annot"><span class="annottext">genshadata :: Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#genshadata"><span class="hs-identifier hs-var hs-var">genshadata</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679116985"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116986"><span class="annot"><span class="annottext">[SynFld]
+synflds :: Syn -&gt; [SynFld]
+synflds :: [SynFld]
+</span><a href="Data.Serde.Internal.Syn.html#synflds"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679116987"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679116987"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; Name -&gt; Name
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116985"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-59"></span><span>      </span><span id="local-6989586621679116988"><span class="annot"><span class="annottext">flds :: [VarBangType]
+</span><a href="#local-6989586621679116988"><span class="hs-identifier hs-var hs-var">flds</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SynFld -&gt; VarBangType) -&gt; [SynFld] -&gt; [VarBangType]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; VarBangType
+</span><a href="Data.Serde.Internal.TH.html#genshafld"><span class="hs-identifier hs-var">genshafld</span></a></span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679116986"><span class="hs-identifier hs-var">synflds</span></a></span><span>
+</span><span id="line-60"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Cxt
+-&gt; Name
+-&gt; [TyVarBndr BndrVis]
+-&gt; Maybe Type
+-&gt; [Con]
+-&gt; [DerivClause]
+-&gt; Dec
+</span><span class="hs-identifier hs-var">DataD</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116987"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Maybe Type
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; [VarBangType] -&gt; Con
+</span><span class="hs-identifier hs-var">RecC</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116987"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[VarBangType]
+</span><a href="#local-6989586621679116988"><span class="hs-identifier hs-var">flds</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- derive nothing</span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genshadata"><span class="hs-identifier hs-var">genshadata</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Dec
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;genshadata: not a data type&quot;</span></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- generate newtype</span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gennew"><span class="hs-identifier hs-type">gennew</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span>
+</span><span id="line-65"></span><span id="gennew"><span class="annot"><span class="annottext">gennew :: Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#gennew"><span class="hs-identifier hs-var hs-var">gennew</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynNewtype"><span class="hs-identifier hs-type">SynNewtype</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679116991"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116992"><span class="annot"><span class="annottext">Either ViaInfo SynFld
+synfld :: Either ViaInfo SynFld
+synfld :: Syn -&gt; Either ViaInfo SynFld
+</span><a href="#local-6989586621679116992"><span class="hs-identifier hs-var hs-var">synfld</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679116994"><span class="annot"><span class="annottext">[Name]
+synders :: Syn -&gt; [Name]
+synders :: [Name]
+</span><a href="Data.Serde.Internal.Syn.html#synders"><span class="hs-identifier hs-var hs-var">synders</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679116995"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679116995"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116991"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-67"></span><span>      </span><span id="local-6989586621679116996"><span class="annot"><span class="annottext">der :: Maybe Type -&gt; DerivClause
+</span><a href="#local-6989586621679116996"><span class="hs-identifier hs-var hs-var">der</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe Type
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe DerivStrategy -&gt; Cxt -&gt; DerivClause
+</span><span class="hs-identifier hs-var">DerivClause</span></span><span> </span><span class="annot"><span class="annottext">Maybe DerivStrategy
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Type) -&gt; Name -&gt; Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116997"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679116997"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116997"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Name]
+</span><a href="#local-6989586621679116994"><span class="hs-identifier hs-var">synders</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-68"></span><span>      </span><span class="annot"><a href="#local-6989586621679116996"><span class="hs-identifier hs-var">der</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679116998"><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116998"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-69"></span><span>        </span><span class="annot"><span class="annottext">Maybe DerivStrategy -&gt; Cxt -&gt; DerivClause
+</span><span class="hs-identifier hs-var">DerivClause</span></span><span>
+</span><span id="line-70"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DerivStrategy -&gt; Maybe DerivStrategy
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Type -&gt; DerivStrategy
+</span><span class="hs-identifier hs-var">ViaStrategy</span></span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679116998"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>          </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Type) -&gt; Name -&gt; Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117000"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117000"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117000"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Name]
+</span><a href="#local-6989586621679116994"><span class="hs-identifier hs-var">synders</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-72"></span><span>      </span><span id="local-6989586621679117001"><span class="annot"><span class="annottext">mk :: Con -&gt; Maybe Type -&gt; Dec
+</span><a href="#local-6989586621679117001"><span class="hs-identifier hs-var hs-var">mk</span></a></span></span><span> </span><span id="local-6989586621679117002"><span class="annot"><span class="annottext">Con
+</span><a href="#local-6989586621679117002"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679117003"><span class="annot"><span class="annottext">Maybe Type
+</span><a href="#local-6989586621679117003"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cxt
+-&gt; Name
+-&gt; [TyVarBndr BndrVis]
+-&gt; Maybe Type
+-&gt; Con
+-&gt; [DerivClause]
+-&gt; Dec
+</span><span class="hs-identifier hs-var">NewtypeD</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116995"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Maybe Type
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">Con
+</span><a href="#local-6989586621679117002"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Maybe Type -&gt; DerivClause
+</span><a href="#local-6989586621679116996"><span class="hs-identifier hs-var">der</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Type
+</span><a href="#local-6989586621679117003"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-73"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either ViaInfo SynFld
+</span><a href="#local-6989586621679116992"><span class="hs-identifier hs-var">synfld</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-74"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Serde.Internal.ISyn.html#Plain"><span class="hs-identifier hs-type">Plain</span></a></span><span> </span><span id="local-6989586621679117006"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117006"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Con -&gt; Maybe Type -&gt; Dec
+</span><a href="#local-6989586621679117001"><span class="hs-identifier hs-var">mk</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; [BangType] -&gt; Con
+</span><span class="hs-identifier hs-var">NormalC</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116995"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bang
+</span><a href="Data.Serde.Internal.TH.html#bang0"><span class="hs-identifier hs-var">bang0</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Name
+</span><span class="hs-identifier hs-var">mkName</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117006"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Type
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-75"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Serde.Internal.ISyn.html#WithVia"><span class="hs-identifier hs-type">WithVia</span></a></span><span> </span><span id="local-6989586621679117009"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117009"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679117010"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117010"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-76"></span><span>          </span><span class="annot"><span class="annottext">Con -&gt; Maybe Type -&gt; Dec
+</span><a href="#local-6989586621679117001"><span class="hs-identifier hs-var">mk</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; [BangType] -&gt; Con
+</span><span class="hs-identifier hs-var">NormalC</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116995"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bang
+</span><a href="Data.Serde.Internal.TH.html#bang0"><span class="hs-identifier hs-var">bang0</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Name
+</span><span class="hs-identifier hs-var">mkName</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117009"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Type -&gt; Maybe Type
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Name
+</span><span class="hs-identifier hs-var">mkName</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117010"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679117011"><span class="annot"><span class="annottext">f :: SynFld
+</span><a href="#local-6989586621679117011"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynFld"><span class="hs-identifier hs-type">SynFld</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117012"><span class="annot"><span class="annottext">Maybe Type
+synfvia :: SynFld -&gt; Maybe Type
+synfvia :: Maybe Type
+</span><a href="Data.Serde.Internal.Syn.html#synfvia"><span class="hs-identifier hs-var hs-var">synfvia</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Con -&gt; Maybe Type -&gt; Dec
+</span><a href="#local-6989586621679117001"><span class="hs-identifier hs-var">mk</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; [VarBangType] -&gt; Con
+</span><span class="hs-identifier hs-var">RecC</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679116995"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SynFld -&gt; VarBangType
+</span><a href="Data.Serde.Internal.TH.html#genfld"><span class="hs-identifier hs-var">genfld</span></a></span><span> </span><span class="annot"><span class="annottext">SynFld
+</span><a href="#local-6989586621679117011"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Type -&gt; Type
+forall a. ToTH a =&gt; a -&gt; Type
+</span><a href="Data.Serde.Internal.Type.html#toth"><span class="hs-identifier hs-var">toth</span></a></span><span> </span><span class="annot"><span class="annottext">(Type -&gt; Type) -&gt; Maybe Type -&gt; Maybe Type
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe Type
+</span><a href="#local-6989586621679117012"><span class="hs-identifier hs-var">synfvia</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gennew"><span class="hs-identifier hs-var">gennew</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Dec
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gennew: not a newtype&quot;</span></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- generate an alias</span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genalias"><span class="hs-identifier hs-type">genalias</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span>
+</span><span id="line-82"></span><span id="genalias"><span class="annot"><span class="annottext">genalias :: Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#genalias"><span class="hs-identifier hs-var hs-var">genalias</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynAlias"><span class="hs-identifier hs-type">SynAlias</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117016"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117017"><span class="annot"><span class="annottext">Type
+syndest :: Type
+syndest :: Syn -&gt; Type
+</span><a href="#local-6989586621679117017"><span class="hs-identifier hs-var hs-var">syndest</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-83"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117019"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679117019"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117016"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-84"></span><span>      </span><span id="local-6989586621679117021"><span class="annot"><span class="annottext">t :: Type
+</span><a href="#local-6989586621679117021"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Type -&gt; Type
+forall a. ToTH a =&gt; a -&gt; Type
+</span><a href="Data.Serde.Internal.Type.html#toth"><span class="hs-identifier hs-var">toth</span></a></span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117017"><span class="hs-identifier hs-var">syndest</span></a></span><span>
+</span><span id="line-85"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Name -&gt; [TyVarBndr BndrVis] -&gt; Type -&gt; Dec
+</span><span class="hs-identifier hs-var">TySynD</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117019"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117021"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genalias"><span class="hs-identifier hs-var">genalias</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Dec
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;genalias: not an alias&quot;</span></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- has a shadowing field?</span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#shadowing"><span class="hs-identifier hs-type">shadowing</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-90"></span><span id="shadowing"><span class="annot"><span class="annottext">shadowing :: Syn -&gt; Bool
+</span><a href="Data.Serde.Internal.TH.html#shadowing"><span class="hs-identifier hs-var hs-var">shadowing</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117024"><span class="annot"><span class="annottext">[SynFld]
+synflds :: Syn -&gt; [SynFld]
+synflds :: [SynFld]
+</span><a href="Data.Serde.Internal.Syn.html#synflds"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SynFld -&gt; Bool) -&gt; [SynFld] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">any</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe Type -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isJust</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Type -&gt; Bool) -&gt; (SynFld -&gt; Maybe Type) -&gt; SynFld -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; Maybe Type
+</span><a href="Data.Serde.Internal.Syn.html#synfvia"><span class="hs-identifier hs-var">synfvia</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679117024"><span class="hs-identifier hs-var">synflds</span></a></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#shadowing"><span class="hs-identifier hs-var">shadowing</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- generate declarations for a 'Syn' object (e.g., data, newtype, alias)</span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gendecs"><span class="hs-identifier hs-type">gendecs</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span class="hs-special">]</span><span>
+</span><span id="line-95"></span><span id="gendecs"><span class="annot"><span class="annottext">gendecs :: Syn -&gt; [Dec]
+</span><a href="Data.Serde.Internal.TH.html#gendecs"><span class="hs-identifier hs-var hs-var">gendecs</span></a></span></span><span> </span><span id="local-6989586621679117029"><span class="annot"><span class="annottext">s :: Syn
+</span><a href="#local-6989586621679117029"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#gendat"><span class="hs-identifier hs-var">gendat</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117029"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Dec -&gt; [Dec] -&gt; [Dec]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Dec]
+</span><a href="#local-6989586621679117030"><span class="hs-identifier hs-var">sha</span></a></span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-97"></span><span>    </span><span id="local-6989586621679117030"><span class="annot"><span class="annottext">sha :: [Dec]
+</span><a href="#local-6989586621679117030"><span class="hs-identifier hs-var hs-var">sha</span></a></span></span><span>
+</span><span id="line-98"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Bool
+</span><a href="Data.Serde.Internal.TH.html#shadowing"><span class="hs-identifier hs-var">shadowing</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117029"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#genshadata"><span class="hs-identifier hs-var">genshadata</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117029"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-99"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gendecs"><span class="hs-identifier hs-var">gendecs</span></a></span><span> </span><span id="local-6989586621679117031"><span class="annot"><span class="annottext">s :: Syn
+</span><a href="#local-6989586621679117031"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynNewtype"><span class="hs-identifier hs-type">SynNewtype</span></a></span><span> </span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#gennew"><span class="hs-identifier hs-var">gennew</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117031"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#gendecs"><span class="hs-identifier hs-var">gendecs</span></a></span><span> </span><span id="local-6989586621679117032"><span class="annot"><span class="annottext">s :: Syn
+</span><a href="#local-6989586621679117032"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynAlias"><span class="hs-identifier hs-type">SynAlias</span></a></span><span> </span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Syn -&gt; Dec
+</span><a href="Data.Serde.Internal.TH.html#genalias"><span class="hs-identifier hs-var">genalias</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117032"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- generate a pattern to deconstruct a normal constructor</span><span>
+</span><span id="line-104"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genfuncctor"><span class="hs-identifier hs-type">genfuncctor</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Pat</span></span><span>
+</span><span id="line-105"></span><span id="genfuncctor"><span class="annot"><span class="annottext">genfuncctor :: Syn -&gt; Q Pat
+</span><a href="Data.Serde.Internal.TH.html#genfuncctor"><span class="hs-identifier hs-var hs-var">genfuncctor</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117034"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117035"><span class="annot"><span class="annottext">[SynFld]
+synflds :: Syn -&gt; [SynFld]
+synflds :: [SynFld]
+</span><a href="Data.Serde.Internal.Syn.html#synflds"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117036"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679117036"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117034"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-107"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Name -&gt; [Q Pat] -&gt; Q Pat
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; [m Pat] -&gt; m Pat
+</span><span class="hs-identifier hs-var">conP</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117036"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(SynFld -&gt; Q Pat) -&gt; [SynFld] -&gt; [Q Pat]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Pat
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Pat
+</span><span class="hs-identifier hs-var">varP</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Pat) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Q Pat
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synfnam"><span class="hs-identifier hs-var">synfnam</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679117035"><span class="hs-identifier hs-var">synflds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genfuncctor"><span class="hs-identifier hs-var">genfuncctor</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q Pat
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;genfuncctor: not a data type&quot;</span></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-comment">-- generate a pattern to deconstruct a shadow constructor</span><span>
+</span><span id="line-111"></span><span class="hs-comment">--</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- fields will have a shadow suffix</span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genfuncctorsha"><span class="hs-identifier hs-type">genfuncctorsha</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Pat</span></span><span>
+</span><span id="line-114"></span><span id="genfuncctorsha"><span class="annot"><span class="annottext">genfuncctorsha :: Syn -&gt; Q Pat
+</span><a href="Data.Serde.Internal.TH.html#genfuncctorsha"><span class="hs-identifier hs-var hs-var">genfuncctorsha</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117039"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117040"><span class="annot"><span class="annottext">[SynFld]
+synflds :: Syn -&gt; [SynFld]
+synflds :: [SynFld]
+</span><a href="Data.Serde.Internal.Syn.html#synflds"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-115"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117041"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679117041"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; Name -&gt; Name
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117039"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-116"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Name -&gt; [Q Pat] -&gt; Q Pat
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; [m Pat] -&gt; m Pat
+</span><span class="hs-identifier hs-var">conP</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117041"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(SynFld -&gt; Q Pat) -&gt; [SynFld] -&gt; [Q Pat]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Pat
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Pat
+</span><span class="hs-identifier hs-var">varP</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Pat) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Q Pat
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synfnam"><span class="hs-identifier hs-var">synfnam</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679117040"><span class="hs-identifier hs-var">synflds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genfuncctorsha"><span class="hs-identifier hs-var">genfuncctorsha</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q Pat
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;genfuncctorsha: not a data type&quot;</span></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- apply shadow fields to a normal constructor</span><span>
+</span><span id="line-120"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genapp"><span class="hs-identifier hs-type">genapp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-121"></span><span id="genapp"><span class="annot"><span class="annottext">genapp :: Syn -&gt; Q Exp
+</span><a href="Data.Serde.Internal.TH.html#genapp"><span class="hs-identifier hs-var hs-var">genapp</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117043"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117044"><span class="annot"><span class="annottext">[SynFld]
+synflds :: Syn -&gt; [SynFld]
+synflds :: [SynFld]
+</span><a href="Data.Serde.Internal.Syn.html#synflds"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-122"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117045"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679117045"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117043"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-123"></span><span>      </span><span id="local-6989586621679117051"><span class="annot"><span class="annottext">v :: [Q Exp]
+</span><a href="#local-6989586621679117051"><span class="hs-identifier hs-var hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(SynFld -&gt; Q Exp) -&gt; [SynFld] -&gt; [Q Exp]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Exp
+</span><span class="hs-identifier hs-var">varE</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Exp) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Q Exp
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synfnam"><span class="hs-identifier hs-var">synfnam</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679117044"><span class="hs-identifier hs-var">synflds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-124"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Q Exp -&gt; Q Exp -&gt; Q Exp) -&gt; Q Exp -&gt; [Q Exp] -&gt; Q Exp
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">Q Exp -&gt; Q Exp -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; m Exp -&gt; m Exp -&gt; m Exp
+</span><span class="hs-identifier hs-var">appE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Exp
+</span><span class="hs-identifier hs-var">conE</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117045"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Q Exp -&gt; Q Exp -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; m Exp -&gt; m Exp -&gt; m Exp
+</span><span class="hs-identifier hs-var">appE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Exp
+</span><span class="hs-identifier hs-var">varE</span></span><span> </span><span class="hs-special">'</span><span class="hs-identifier">coerce</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Q Exp -&gt; Q Exp) -&gt; [Q Exp] -&gt; [Q Exp]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">[Q Exp]
+</span><a href="#local-6989586621679117051"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-125"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genapp"><span class="hs-identifier hs-var">genapp</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q Exp
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;genapp: not a data type&quot;</span></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- apply normal fields to a shadow constructor</span><span>
+</span><span id="line-128"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genappsha"><span class="hs-identifier hs-type">genappsha</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-129"></span><span id="genappsha"><span class="annot"><span class="annottext">genappsha :: Syn -&gt; Q Exp
+</span><a href="Data.Serde.Internal.TH.html#genappsha"><span class="hs-identifier hs-var hs-var">genappsha</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynData"><span class="hs-identifier hs-type">SynData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679117054"><span class="annot"><span class="annottext">Name
+synnam :: Syn -&gt; Name
+synnam :: Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var hs-var">synnam</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117055"><span class="annot"><span class="annottext">[SynFld]
+synflds :: Syn -&gt; [SynFld]
+synflds :: [SynFld]
+</span><a href="Data.Serde.Internal.Syn.html#synflds"><span class="hs-identifier hs-var hs-var">synflds</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-130"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117056"><span class="annot"><span class="annottext">n :: Name
+</span><a href="#local-6989586621679117056"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; Name -&gt; Name
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117054"><span class="hs-identifier hs-var">synnam</span></a></span><span>
+</span><span id="line-131"></span><span>      </span><span id="local-6989586621679117061"><span class="annot"><span class="annottext">v :: [Q Exp]
+</span><a href="#local-6989586621679117061"><span class="hs-identifier hs-var hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(SynFld -&gt; Q Exp) -&gt; [SynFld] -&gt; [Q Exp]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Exp
+</span><span class="hs-identifier hs-var">varE</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Exp) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Q Exp
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (SynFld -&gt; Name) -&gt; SynFld -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SynFld -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synfnam"><span class="hs-identifier hs-var">synfnam</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SynFld]
+</span><a href="#local-6989586621679117055"><span class="hs-identifier hs-var">synflds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Q Exp -&gt; Q Exp -&gt; Q Exp) -&gt; Q Exp -&gt; [Q Exp] -&gt; Q Exp
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">Q Exp -&gt; Q Exp -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; m Exp -&gt; m Exp -&gt; m Exp
+</span><span class="hs-identifier hs-var">appE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Exp
+</span><span class="hs-identifier hs-var">conE</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679117056"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Q Exp -&gt; Q Exp -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; m Exp -&gt; m Exp -&gt; m Exp
+</span><span class="hs-identifier hs-var">appE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Exp
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Exp
+</span><span class="hs-identifier hs-var">varE</span></span><span> </span><span class="hs-special">'</span><span class="hs-identifier">coerce</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Q Exp -&gt; Q Exp) -&gt; [Q Exp] -&gt; [Q Exp]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">[Q Exp]
+</span><a href="#local-6989586621679117061"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#genappsha"><span class="hs-identifier hs-var">genappsha</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q Exp
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;genappsha: not a data type&quot;</span></span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="hs-comment">-- to prevent getQ from silently failing (by fixing the type)</span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- remember: getQ relies on Typeable</span><span>
+</span><span id="line-137"></span><span class="hs-keyword">newtype</span><span> </span><span id="QQState"><span class="annot"><a href="Data.Serde.Internal.TH.html#QQState"><span class="hs-identifier hs-var">QQState</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="QQState"><span class="annot"><a href="Data.Serde.Internal.TH.html#QQState"><span class="hs-identifier hs-var">QQState</span></a></span></span><span> </span><span class="hs-special">{</span><span id="qqstate"><span class="annot"><span class="annottext">QQState -&gt; [Syn]
+</span><a href="Data.Serde.Internal.TH.html#qqstate"><span class="hs-identifier hs-var hs-var">qqstate</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Data.Serde.Internal.Syn.html#Syn"><span class="hs-identifier hs-type">Syn</span></a></span><span class="hs-special">]</span><span class="hs-special">}</span><span> </span><span class="hs-comment">-- declarations</span><span>
+</span><span id="line-138"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="hs-comment">-- | run quasi-quote body, and replace Q state (to get the</span><span>
+</span><span id="line-141"></span><span class="hs-comment">-- shadowable data types)</span><span>
+</span><span id="line-142"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#runqq1"><span class="hs-identifier hs-type">runqq1</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span class="hs-special">]</span><span>
+</span><span id="line-143"></span><span id="runqq1"><span class="annot"><span class="annottext">runqq1 :: String -&gt; Q [Dec]
+</span><a href="Data.Serde.Internal.TH.html#runqq1"><span class="hs-identifier hs-var hs-var">runqq1</span></a></span></span><span> </span><span id="local-6989586621679117064"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117064"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String Parsed
+</span><a href="Data.Serde.Internal.Syn.html#parse"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117064"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-144"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679117066"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117066"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q [Dec]
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679117066"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-145"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679117067"><span class="annot"><span class="annottext">Parsed
+</span><a href="#local-6989586621679117067"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-146"></span><span>    </span><span class="annot"><span class="annottext">QQState -&gt; Q ()
+forall a. Typeable a =&gt; a -&gt; Q ()
+</span><span class="hs-identifier hs-var">putQ</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Syn] -&gt; QQState
+</span><a href="Data.Serde.Internal.TH.html#QQState"><span class="hs-identifier hs-var">QQState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parsed -&gt; [Syn]
+</span><a href="Data.Serde.Internal.Syn.html#declarations"><span class="hs-identifier hs-var">declarations</span></a></span><span> </span><span class="annot"><span class="annottext">Parsed
+</span><a href="#local-6989586621679117067"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-147"></span><span>    </span><span class="annot"><span class="annottext">[Dec] -&gt; Q [Dec]
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[[Dec]] -&gt; [Dec]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Syn -&gt; [Dec]
+</span><a href="Data.Serde.Internal.TH.html#gendecs"><span class="hs-identifier hs-var">gendecs</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117071"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117071"><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117071"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parsed -&gt; [Syn]
+</span><a href="Data.Serde.Internal.Syn.html#declarations"><span class="hs-identifier hs-var">declarations</span></a></span><span> </span><span class="annot"><span class="annottext">Parsed
+</span><a href="#local-6989586621679117067"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span class="annot"><span class="hs-comment">-- | arguments to user code that generates coercions</span></span><span>
+</span><span id="line-150"></span><span class="hs-keyword">data</span><span> </span><span id="RunUserCoercion"><span class="annot"><a href="Data.Serde.Internal.TH.html#RunUserCoercion"><span class="hs-identifier hs-var">RunUserCoercion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="RunUserCoercion"><span class="annot"><a href="Data.Serde.Internal.TH.html#RunUserCoercion"><span class="hs-identifier hs-var">RunUserCoercion</span></a></span></span><span>
+</span><span id="line-151"></span><span>  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="hs-comment">-- | regular (non-record syntax) pattern for deconstruction (normal)</span></span><span>
+</span><span id="line-152"></span><span>    </span><span id="patnormal"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q Pat
+</span><a href="Data.Serde.Internal.TH.html#patnormal"><span class="hs-identifier hs-var hs-var">patnormal</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Pat</span></span><span class="hs-special">,</span><span>
+</span><span id="line-153"></span><span>    </span><span class="annot"><span class="hs-comment">-- | regular (non-record syntax) pattern for deconstruction (shadow)</span></span><span>
+</span><span id="line-154"></span><span>    </span><span id="patshadow"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q Pat
+</span><a href="Data.Serde.Internal.TH.html#patshadow"><span class="hs-identifier hs-var hs-var">patshadow</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Pat</span></span><span class="hs-special">,</span><span>
+</span><span id="line-155"></span><span>    </span><span class="annot"><span class="hs-comment">-- | apply shadow fields to a normal constructor</span></span><span>
+</span><span id="line-156"></span><span>    </span><span id="appnormal"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q Exp
+</span><a href="Data.Serde.Internal.TH.html#appnormal"><span class="hs-identifier hs-var hs-var">appnormal</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span class="hs-special">,</span><span>
+</span><span id="line-157"></span><span>    </span><span class="annot"><span class="hs-comment">-- | apply normal fields to a shadow constructor</span></span><span>
+</span><span id="line-158"></span><span>    </span><span id="appshadow"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q Exp
+</span><a href="Data.Serde.Internal.TH.html#appshadow"><span class="hs-identifier hs-var hs-var">appshadow</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span class="hs-special">,</span><span>
+</span><span id="line-159"></span><span>    </span><span class="annot"><span class="hs-comment">-- | class to derive</span></span><span>
+</span><span id="line-160"></span><span>    </span><span id="datatyp"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q Type
+</span><a href="Data.Serde.Internal.TH.html#datatyp"><span class="hs-identifier hs-var hs-var">datatyp</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TH.Type</span></span><span class="hs-special">,</span><span>
+</span><span id="line-161"></span><span>    </span><span class="annot"><span class="hs-comment">-- | shadow data type</span></span><span>
+</span><span id="line-162"></span><span>    </span><span id="shadowdatatyp"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q Type
+</span><a href="Data.Serde.Internal.TH.html#shadowdatatyp"><span class="hs-identifier hs-var hs-var">shadowdatatyp</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TH.Type</span></span><span>
+</span><span id="line-163"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span class="hs-comment">-- | using the stored state (from last quasi-quote run), run user code</span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- to generate coercions</span><span>
+</span><span id="line-167"></span><span class="annot"><a href="Data.Serde.Internal.TH.html#runusercoercion"><span class="hs-identifier hs-type">runusercoercion</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-168"></span><span>  </span><span class="annot"><span class="hs-comment">-- | generate coercions between shadow and regular data types</span></span><span>
+</span><span id="line-169"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Data.Serde.Internal.TH.html#RunUserCoercion"><span class="hs-identifier hs-type">RunUserCoercion</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-170"></span><span>  </span><span class="hs-comment">-- | derive coercions for shadow data, regular data with no shadows,</span><span>
+</span><span id="line-171"></span><span>  </span><span class="hs-comment">-- and newtypes</span><span>
+</span><span id="line-172"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">TH.Name</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-173"></span><span>  </span><span class="annot"><span class="hs-comment">-- | preparations for shadow types</span></span><span>
+</span><span id="line-174"></span><span>  </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">TH.Name</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-175"></span><span>  </span><span class="annot"><span class="hs-comment">-- | generated coercions</span></span><span>
+</span><span id="line-176"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Dec</span></span><span class="hs-special">]</span><span>
+</span><span id="line-177"></span><span id="runusercoercion"><span class="annot"><span class="annottext">runusercoercion :: (RunUserCoercion -&gt; Q [Dec])
+-&gt; (Name -&gt; Q [Dec]) -&gt; [Name] -&gt; Q [Dec]
+</span><a href="Data.Serde.Internal.TH.html#runusercoercion"><span class="hs-identifier hs-var hs-var">runusercoercion</span></a></span></span><span> </span><span id="local-6989586621679117079"><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q [Dec]
+</span><a href="#local-6989586621679117079"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679117080"><span class="annot"><span class="annottext">Name -&gt; Q [Dec]
+</span><a href="#local-6989586621679117080"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Name -&gt; Type) -&gt; [Name] -&gt; Cxt
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span id="local-6989586621679117081"><span class="annot"><span class="annottext">Cxt
+</span><a href="#local-6989586621679117081"><span class="hs-identifier hs-var">preps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-178"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117084"><span class="annot"><span class="annottext">++++ :: Q [a] -&gt; Q [a] -&gt; Q [a]
+</span><a href="#local-6989586621679117084"><span class="hs-operator hs-var hs-var">(++++)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([a] -&gt; [a] -&gt; [a]) -&gt; Q [a] -&gt; Q [a] -&gt; Q [a]
+forall a b c. (a -&gt; b -&gt; c) -&gt; Q a -&gt; Q b -&gt; Q c
+forall (f :: * -&gt; *) a b c.
+Applicative f =&gt;
+(a -&gt; b -&gt; c) -&gt; f a -&gt; f b -&gt; f c
+</span><span class="hs-identifier hs-var">liftA2</span></span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [a] -&gt; [a]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">(++)</span></span><span>
+</span><span id="line-179"></span><span>  </span><span class="hs-comment">-- get all the shadowable data types and the regular data types</span><span>
+</span><span id="line-180"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117086"><span class="annot"><span class="annottext">isnotalias :: Syn -&gt; Bool
+</span><a href="#local-6989586621679117086"><span class="hs-identifier hs-var hs-var">isnotalias</span></a></span></span><span> </span><span class="annot"><a href="Data.Serde.Internal.Syn.html#SynAlias"><span class="hs-identifier hs-type">SynAlias</span></a></span><span> </span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-181"></span><span>      </span><span class="annot"><a href="#local-6989586621679117086"><span class="hs-identifier hs-var">isnotalias</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-182"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679117087"><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117087"><span class="hs-identifier hs-var">ss</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117088"><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117088"><span class="hs-identifier hs-var">ns</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-183"></span><span>    </span><span class="annot"><span class="annottext">Q (Maybe QQState)
+forall a. Typeable a =&gt; Q (Maybe a)
+</span><span class="hs-identifier hs-var">getQ</span></span><span> </span><span class="annot"><span class="annottext">Q (Maybe QQState)
+-&gt; (Maybe QQState -&gt; Q ([Syn], [Syn])) -&gt; Q ([Syn], [Syn])
+forall a b. Q a -&gt; (a -&gt; Q b) -&gt; Q b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-184"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679117090"><span class="annot"><span class="annottext">QQState
+</span><a href="#local-6989586621679117090"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">([Syn], [Syn]) -&gt; Q ([Syn], [Syn])
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(([Syn], [Syn]) -&gt; Q ([Syn], [Syn]))
+-&gt; ([Syn], [Syn]) -&gt; Q ([Syn], [Syn])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Bool) -&gt; [Syn] -&gt; ([Syn], [Syn])
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; ([a], [a])
+</span><span class="hs-identifier hs-var">partition</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Bool
+</span><a href="Data.Serde.Internal.TH.html#shadowing"><span class="hs-identifier hs-var">shadowing</span></a></span><span> </span><span class="annot"><span class="annottext">([Syn] -&gt; ([Syn], [Syn])) -&gt; [Syn] -&gt; ([Syn], [Syn])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Bool) -&gt; [Syn] -&gt; [Syn]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Bool
+</span><a href="#local-6989586621679117086"><span class="hs-identifier hs-var">isnotalias</span></a></span><span> </span><span class="annot"><span class="annottext">([Syn] -&gt; [Syn]) -&gt; [Syn] -&gt; [Syn]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">QQState -&gt; [Syn]
+</span><a href="Data.Serde.Internal.TH.html#qqstate"><span class="hs-identifier hs-var">qqstate</span></a></span><span> </span><span class="annot"><span class="annottext">QQState
+</span><a href="#local-6989586621679117090"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-185"></span><span>      </span><span class="annot"><span class="annottext">Maybe QQState
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q ([Syn], [Syn])
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;runusercoercion: run serde quasi-quote first&quot;</span></span><span>
+</span><span id="line-186"></span><span>  </span><span class="hs-comment">-- standaloneDerivD is used to generate standalone deriving instances</span><span>
+</span><span id="line-187"></span><span>  </span><span class="hs-comment">-- for the shadow types</span><span>
+</span><span id="line-188"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679117098"><span class="annot"><span class="annottext">toderive :: [(Q Type, Type)]
+</span><a href="#local-6989586621679117098"><span class="hs-identifier hs-var hs-var">toderive</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-189"></span><span>        </span><span class="annot"><span class="annottext">[[(Q Type, Type)]] -&gt; [(Q Type, Type)]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span>
+</span><span id="line-190"></span><span>          </span><span class="hs-special">[</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Type
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Type
+</span><span class="hs-identifier hs-var">conT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Type) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Q Type
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Q Type) -&gt; Syn -&gt; Q Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117099"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117100"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-191"></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Type
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Type
+</span><span class="hs-identifier hs-var">conT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Type) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Q Type
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Q Type) -&gt; Syn -&gt; Q Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117099"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117100"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>            </span><span class="hs-special">]</span><span>
+</span><span id="line-193"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117099"><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117099"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117087"><span class="hs-identifier hs-var">ss</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-194"></span><span>            </span><span id="local-6989586621679117100"><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117100"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cxt
+</span><a href="#local-6989586621679117081"><span class="hs-identifier hs-var">preps</span></a></span><span>
+</span><span id="line-195"></span><span>          </span><span class="hs-special">]</span><span>
+</span><span id="line-196"></span><span>          </span><span class="annot"><span class="annottext">[(Q Type, Type)] -&gt; [(Q Type, Type)] -&gt; [(Q Type, Type)]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Q Type
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Type
+</span><span class="hs-identifier hs-var">conT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Type) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Q Type
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Q Type) -&gt; Syn -&gt; Q Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117101"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117102"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117101"><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117101"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117088"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117102"><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117102"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cxt
+</span><a href="#local-6989586621679117081"><span class="hs-identifier hs-var">preps</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-197"></span><span>      </span><span id="local-6989586621679117114"><span class="annot"><span class="annottext">derives :: Q [Dec]
+</span><a href="#local-6989586621679117114"><span class="hs-identifier hs-var hs-var">derives</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(Q Type, Type)] -&gt; ((Q Type, Type) -&gt; Q Dec) -&gt; Q [Dec]
+forall (t :: * -&gt; *) (f :: * -&gt; *) a b.
+(Traversable t, Applicative f) =&gt;
+t a -&gt; (a -&gt; f b) -&gt; f (t b)
+</span><span class="hs-identifier hs-var">for</span></span><span> </span><span class="annot"><span class="annottext">[(Q Type, Type)]
+</span><a href="#local-6989586621679117098"><span class="hs-identifier hs-var">toderive</span></a></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679117116"><span class="annot"><span class="annottext">Q Type
+</span><a href="#local-6989586621679117116"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679117117"><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117117"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-198"></span><span>        </span><span class="annot"><span class="annottext">Q Cxt -&gt; Q Type -&gt; Q Dec
+forall (m :: * -&gt; *). Quote m =&gt; m Cxt -&gt; m Type -&gt; m Dec
+</span><span class="hs-identifier hs-var">standaloneDerivD</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cxt -&gt; Q Cxt
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Q Type -&gt; Q Type -&gt; Q Type
+forall (m :: * -&gt; *). Quote m =&gt; m Type -&gt; m Type -&gt; m Type
+</span><span class="hs-identifier hs-var">appT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Type -&gt; Q Type
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Type
+</span><a href="#local-6989586621679117117"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Q Type
+</span><a href="#local-6989586621679117116"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span>  </span><span class="annot"><span class="annottext">Q [Dec]
+</span><a href="#local-6989586621679117114"><span class="hs-identifier hs-var">derives</span></a></span><span>
+</span><span id="line-200"></span><span>    </span><span class="annot"><span class="annottext">Q [Dec] -&gt; Q [Dec] -&gt; Q [Dec]
+forall {a}. Q [a] -&gt; Q [a] -&gt; Q [a]
+</span><a href="#local-6989586621679117084"><span class="hs-operator hs-var">++++</span></a></span><span> </span><span class="annot"><span class="annottext">[Q [Dec]] -&gt; Q [Dec]
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; Q [Dec]
+</span><a href="#local-6989586621679117080"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117119"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117119"><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117119"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117087"><span class="hs-identifier hs-var">ss</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-201"></span><span>    </span><span class="annot"><span class="annottext">Q [Dec] -&gt; Q [Dec] -&gt; Q [Dec]
+forall {a}. Q [a] -&gt; Q [a] -&gt; Q [a]
+</span><a href="#local-6989586621679117084"><span class="hs-operator hs-var">++++</span></a></span><span> </span><span class="annot"><span class="annottext">[Q [Dec]] -&gt; Q [Dec]
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Name -&gt; Q [Dec]
+</span><a href="#local-6989586621679117080"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117120"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117120"><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117120"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117088"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-202"></span><span>    </span><span class="annot"><span class="annottext">Q [Dec] -&gt; Q [Dec] -&gt; Q [Dec]
+forall {a}. Q [a] -&gt; Q [a] -&gt; Q [a]
+</span><a href="#local-6989586621679117084"><span class="hs-operator hs-var">++++</span></a></span><span> </span><span class="annot"><span class="annottext">[Q [Dec]] -&gt; Q [Dec]
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span>
+</span><span id="line-203"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">RunUserCoercion -&gt; Q [Dec]
+</span><a href="#local-6989586621679117079"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-204"></span><span>          </span><span class="annot"><a href="Data.Serde.Internal.TH.html#RunUserCoercion"><span class="hs-identifier hs-type">RunUserCoercion</span></a></span><span>
+</span><span id="line-205"></span><span>            </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">patnormal :: Q Pat
+</span><a href="Data.Serde.Internal.TH.html#patnormal"><span class="hs-identifier hs-var">patnormal</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Q Pat
+</span><a href="Data.Serde.Internal.TH.html#genfuncctor"><span class="hs-identifier hs-var">genfuncctor</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-206"></span><span>              </span><span class="annot"><span class="annottext">patshadow :: Q Pat
+</span><a href="Data.Serde.Internal.TH.html#patshadow"><span class="hs-identifier hs-var">patshadow</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Q Pat
+</span><a href="Data.Serde.Internal.TH.html#genfuncctorsha"><span class="hs-identifier hs-var">genfuncctorsha</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-207"></span><span>              </span><span class="annot"><span class="annottext">appnormal :: Q Exp
+</span><a href="Data.Serde.Internal.TH.html#appnormal"><span class="hs-identifier hs-var">appnormal</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Q Exp
+</span><a href="Data.Serde.Internal.TH.html#genapp"><span class="hs-identifier hs-var">genapp</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-208"></span><span>              </span><span class="annot"><span class="annottext">appshadow :: Q Exp
+</span><a href="Data.Serde.Internal.TH.html#appshadow"><span class="hs-identifier hs-var">appshadow</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Q Exp
+</span><a href="Data.Serde.Internal.TH.html#genappsha"><span class="hs-identifier hs-var">genappsha</span></a></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-209"></span><span>              </span><span class="annot"><span class="annottext">datatyp :: Q Type
+</span><a href="Data.Serde.Internal.TH.html#datatyp"><span class="hs-identifier hs-var">datatyp</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Q Type
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Type
+</span><span class="hs-identifier hs-var">conT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Type) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Q Type
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Q Type) -&gt; Syn -&gt; Q Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-210"></span><span>              </span><span class="annot"><span class="annottext">shadowdatatyp :: Q Type
+</span><a href="Data.Serde.Internal.TH.html#shadowdatatyp"><span class="hs-identifier hs-var">shadowdatatyp</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Q Type
+forall (m :: * -&gt; *). Quote m =&gt; Name -&gt; m Type
+</span><span class="hs-identifier hs-var">conT</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Q Type) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Q Type
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.TH.html#shadownam"><span class="hs-identifier hs-var">shadownam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name
+</span><a href="Data.Serde.Internal.Type.html#cvtnam"><span class="hs-identifier hs-var">cvtnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Name) -&gt; (Syn -&gt; Name) -&gt; Syn -&gt; Name
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Syn -&gt; Name
+</span><a href="Data.Serde.Internal.Syn.html#synnam"><span class="hs-identifier hs-var">synnam</span></a></span><span> </span><span class="annot"><span class="annottext">(Syn -&gt; Q Type) -&gt; Syn -&gt; Q Type
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-211"></span><span>            </span><span class="hs-special">}</span><span>
+</span><span id="line-212"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679117121"><span class="annot"><span class="annottext">Syn
+</span><a href="#local-6989586621679117121"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Syn]
+</span><a href="#local-6989586621679117087"><span class="hs-identifier hs-var">ss</span></a></span><span>
+</span><span id="line-213"></span><span>      </span><span class="hs-special">]</span><span>
+</span><span id="line-214"></span></pre></body></html>
